@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Activity, Database, Cpu, Users, Wifi, WifiOff, RefreshCw,
   AlertTriangle, CheckCircle2, Clock, Zap, Server, Radio,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, Bell, Settings, X, Mail, MessageSquare, Save,
 } from 'lucide-react';
 import type { RealtimeMetrics } from '@/app/api/admin/realtime-metrics/route';
 import MetricGauge from './MetricGauge';
@@ -12,6 +12,46 @@ import LiveSparkline from './LiveSparkline';
 const POLL_INTERVAL = 8000; // 8 s
 const HISTORY_MAX = 30;
 
+// ── Threshold types ──────────────────────────────────────────────────────────
+interface MonitorThresholds {
+  jobQueueDepth: { warn: number; critical: number; enabled: boolean };
+  redisHitRateDrop: { warn: number; critical: number; enabled: boolean };
+  aiLatencySpike: { warn: number; critical: number; enabled: boolean };
+  sessionOverload: { warn: number; critical: number; enabled: boolean };
+}
+
+interface NotificationConfig {
+  slackEnabled: boolean;
+  slackWebhookUrl: string;
+  emailEnabled: boolean;
+  emailRecipients: string;
+}
+
+interface ActiveAlert {
+  metric: string;
+  metricLabel: string;
+  currentValue: number;
+  threshold: number;
+  severity: 'warn' | 'critical';
+  unit: string;
+  ts: number;
+}
+
+const DEFAULT_THRESHOLDS: MonitorThresholds = {
+  jobQueueDepth:    { warn: 50,  critical: 200, enabled: true },
+  redisHitRateDrop: { warn: 70,  critical: 50,  enabled: true },
+  aiLatencySpike:   { warn: 800, critical: 2000, enabled: true },
+  sessionOverload:  { warn: 200, critical: 500, enabled: true },
+};
+
+const DEFAULT_NOTIF: NotificationConfig = {
+  slackEnabled: false,
+  slackWebhookUrl: '',
+  emailEnabled: false,
+  emailRecipients: '',
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span
@@ -47,6 +87,200 @@ function latencyColor(ms: number): string {
   return '#f87171';
 }
 
+// ── Threshold Settings Panel ─────────────────────────────────────────────────
+interface ThresholdPanelProps {
+  thresholds: MonitorThresholds;
+  notif: NotificationConfig;
+  onSave: (t: MonitorThresholds, n: NotificationConfig) => void;
+  onClose: () => void;
+}
+
+function ThresholdPanel({ thresholds, notif, onSave, onClose }: ThresholdPanelProps) {
+  const [t, setT] = useState<MonitorThresholds>(JSON.parse(JSON.stringify(thresholds)));
+  const [n, setN] = useState<NotificationConfig>({ ...notif });
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    onSave(t, n);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const metricRows: { key: keyof MonitorThresholds; label: string; unit: string; warnLabel: string; critLabel: string; hint: string }[] = [
+    { key: 'jobQueueDepth',    label: 'Job Queue Depth',      unit: 'jobs',  warnLabel: 'Warn above',     critLabel: 'Critical above', hint: 'Total pending + running jobs' },
+    { key: 'redisHitRateDrop', label: 'Redis Hit Rate Drop',  unit: '%',     warnLabel: 'Warn below',     critLabel: 'Critical below', hint: 'Cache hit rate — lower is worse' },
+    { key: 'aiLatencySpike',   label: 'AI Latency Spike',     unit: 'ms',    warnLabel: 'Warn above',     critLabel: 'Critical above', hint: 'Highest p50 across AI providers' },
+    { key: 'sessionOverload',  label: 'Session Overload',     unit: 'sessions', warnLabel: 'Warn above',  critLabel: 'Critical above', hint: 'Concurrent active interview sessions' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bell size={16} className="text-primary" />
+            <h3 className="text-sm font-700 text-foreground">Alert Threshold Configuration</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-6">
+          {/* Metric Thresholds */}
+          <div>
+            <p className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-3">Metric Thresholds</p>
+            <div className="space-y-3">
+              {metricRows.map(({ key, label, unit, warnLabel, critLabel, hint }) => (
+                <div key={key} className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-600 text-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground">{hint}</p>
+                    </div>
+                    <button
+                      onClick={() => setT(prev => ({ ...prev, [key]: { ...prev[key], enabled: !prev[key].enabled } }))}
+                      className={`text-xs px-3 py-1 rounded-lg border transition-colors ${t[key].enabled ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-muted border-border text-muted-foreground'}`}
+                    >
+                      {t[key].enabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-yellow-400/80 uppercase tracking-wider block mb-1">{warnLabel} ({unit})</label>
+                      <input
+                        type="number"
+                        value={t[key].warn}
+                        onChange={e => setT(prev => ({ ...prev, [key]: { ...prev[key], warn: Number(e.target.value) } }))}
+                        className="w-full bg-yellow-400/5 border border-yellow-400/20 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-yellow-400/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-red-400/80 uppercase tracking-wider block mb-1">{critLabel} ({unit})</label>
+                      <input
+                        type="number"
+                        value={t[key].critical}
+                        onChange={e => setT(prev => ({ ...prev, [key]: { ...prev[key], critical: Number(e.target.value) } }))}
+                        className="w-full bg-red-400/5 border border-red-400/20 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-red-400/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notification Channels */}
+          <div>
+            <p className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-3">Notification Channels</p>
+            <div className="space-y-3">
+              {/* Slack */}
+              <div className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={14} className="text-[#4A154B]" />
+                    <span className="text-sm font-600 text-foreground">Slack Webhook</span>
+                  </div>
+                  <button
+                    onClick={() => setN(prev => ({ ...prev, slackEnabled: !prev.slackEnabled }))}
+                    className={`text-xs px-3 py-1 rounded-lg border transition-colors ${n.slackEnabled ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-muted border-border text-muted-foreground'}`}
+                  >
+                    {n.slackEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+                {n.slackEnabled && (
+                  <div>
+                    <label className="text-[11px] text-muted-foreground uppercase tracking-wider block mb-1">Webhook URL</label>
+                    <input
+                      type="url"
+                      value={n.slackWebhookUrl}
+                      onChange={e => setN(prev => ({ ...prev, slackWebhookUrl: e.target.value }))}
+                      placeholder="https://hooks.slack.com/services/T.../B.../..."
+                      className="w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">Create an Incoming Webhook in your Slack workspace settings</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail size={14} className="text-blue-400" />
+                    <span className="text-sm font-600 text-foreground">Email Notifications</span>
+                  </div>
+                  <button
+                    onClick={() => setN(prev => ({ ...prev, emailEnabled: !prev.emailEnabled }))}
+                    className={`text-xs px-3 py-1 rounded-lg border transition-colors ${n.emailEnabled ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-muted border-border text-muted-foreground'}`}
+                  >
+                    {n.emailEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+                {n.emailEnabled && (
+                  <div>
+                    <label className="text-[11px] text-muted-foreground uppercase tracking-wider block mb-1">Recipients (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={n.emailRecipients}
+                      onChange={e => setN(prev => ({ ...prev, emailRecipients: e.target.value }))}
+                      placeholder="admin@example.com, ops@example.com"
+                      className="w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">Sent via Brevo (or Resend as fallback) — configure BREVO_API_KEY in .env</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 p-5 border-t border-border">
+          <button
+            onClick={handleSave}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-500 border transition-colors ${saved ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-primary/15 text-primary border-primary/30 hover:bg-primary/25'}`}
+          >
+            {saved ? <><CheckCircle2 size={14} /> Saved!</> : <><Save size={14} /> Save Thresholds</>}
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl bg-muted text-muted-foreground border border-border text-sm hover:text-foreground transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Alert Banner ─────────────────────────────────────────────────────────────
+function AlertBanner({ alerts, onDismiss }: { alerts: ActiveAlert[]; onDismiss: (metric: string) => void }) {
+  if (alerts.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {alerts.map(alert => (
+        <div
+          key={alert.metric}
+          className={`flex items-start gap-3 rounded-xl px-4 py-3 border text-sm ${
+            alert.severity === 'critical' ?'bg-red-400/10 border-red-400/25 text-red-300' :'bg-amber-400/10 border-amber-400/25 text-amber-300'
+          }`}
+        >
+          <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="font-600">{alert.severity === 'critical' ? '🚨 CRITICAL' : '⚠️ WARNING'}: {alert.metricLabel}</span>
+            <span className="text-xs ml-2 opacity-80">
+              Current: <strong>{alert.currentValue}{alert.unit}</strong> — threshold: {alert.threshold}{alert.unit}
+            </span>
+          </div>
+          <button onClick={() => onDismiss(alert.metric)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function RealtimeMonitorContent() {
   const [metrics, setMetrics] = useState<RealtimeMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +294,81 @@ export default function RealtimeMonitorContent() {
   const [sessionHistory, setSessionHistory] = useState<number[]>([]);
   const [latencyHistory, setLatencyHistory] = useState<Record<string, number[]>>({});
 
+  // Threshold state
+  const [showThresholdPanel, setShowThresholdPanel] = useState(false);
+  const [thresholds, setThresholds] = useState<MonitorThresholds>(DEFAULT_THRESHOLDS);
+  const [notifConfig, setNotifConfig] = useState<NotificationConfig>(DEFAULT_NOTIF);
+  const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const notifCooldown = useRef<Record<string, number>>({});
+
   const prevMetrics = useRef<RealtimeMetrics | null>(null);
+
+  // ── Threshold breach detection ──────────────────────────────────────────
+  const checkThresholds = useCallback(async (data: RealtimeMetrics) => {
+    const totalQueue = data.jobQueue.pending + data.jobQueue.running;
+    const maxAiLatency = data.aiLatency.length > 0
+      ? Math.max(...data.aiLatency.map(a => a.p50Ms).filter(v => v > 0))
+      : 0;
+
+    const checks: { key: keyof MonitorThresholds; metric: string; label: string; value: number; unit: string; lowerIsBad?: boolean }[] = [
+      { key: 'jobQueueDepth',    metric: 'job_queue_depth',    label: 'Job Queue Depth',     value: totalQueue,                          unit: ' jobs' },
+      { key: 'redisHitRateDrop', metric: 'redis_hit_rate',     label: 'Redis Hit Rate',       value: data.redis.hitRate,                  unit: '%',  lowerIsBad: true },
+      { key: 'aiLatencySpike',   metric: 'ai_latency_spike',   label: 'AI Latency Spike',     value: maxAiLatency,                        unit: 'ms' },
+      { key: 'sessionOverload',  metric: 'session_overload',   label: 'Session Overload',     value: data.sessions.activeInterviews,      unit: ' sessions' },
+    ];
+
+    const newAlerts: ActiveAlert[] = [];
+
+    for (const check of checks) {
+      const cfg = thresholds[check.key];
+      if (!cfg.enabled) continue;
+
+      let severity: 'warn' | 'critical' | null = null;
+      let breachedThreshold = 0;
+
+      if (check.lowerIsBad) {
+        if (check.value > 0 && check.value <= cfg.critical) { severity = 'critical'; breachedThreshold = cfg.critical; }
+        else if (check.value > 0 && check.value <= cfg.warn) { severity = 'warn'; breachedThreshold = cfg.warn; }
+      } else {
+        if (check.value >= cfg.critical) { severity = 'critical'; breachedThreshold = cfg.critical; }
+        else if (check.value >= cfg.warn) { severity = 'warn'; breachedThreshold = cfg.warn; }
+      }
+
+      if (severity && !dismissedAlerts.has(check.metric)) {
+        newAlerts.push({ metric: check.metric, metricLabel: check.label, currentValue: check.value, threshold: breachedThreshold, severity, unit: check.unit, ts: Date.now() });
+
+        // Send notification (with 5-min cooldown per metric)
+        const lastSent = notifCooldown.current[check.metric] ?? 0;
+        if (Date.now() - lastSent > 5 * 60 * 1000 && (notifConfig.slackEnabled || notifConfig.emailEnabled)) {
+          notifCooldown.current[check.metric] = Date.now();
+          const emailRecipients = notifConfig.emailRecipients
+            .split(',')
+            .map(e => e.trim())
+            .filter(Boolean);
+
+          fetch('/api/admin/alert-notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              metric: check.metric,
+              metricLabel: check.label,
+              currentValue: check.value,
+              threshold: breachedThreshold,
+              severity,
+              unit: check.unit,
+              slackEnabled: notifConfig.slackEnabled,
+              slackWebhookUrl: notifConfig.slackWebhookUrl,
+              emailEnabled: notifConfig.emailEnabled,
+              emailRecipients,
+            }),
+          }).catch(() => { /* silent */ });
+        }
+      }
+    }
+
+    setActiveAlerts(newAlerts);
+  }, [thresholds, notifConfig, dismissedAlerts]);
 
   const fetchMetrics = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -85,12 +393,15 @@ export default function RealtimeMonitorContent() {
         });
         return next;
       });
+
+      // Check thresholds after update
+      checkThresholds(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
     } finally {
       setLoading(false);
     }
-  }, [metrics]);
+  }, [metrics, checkThresholds]);
 
   useEffect(() => {
     fetchMetrics();
@@ -109,6 +420,19 @@ export default function RealtimeMonitorContent() {
   const prevTotalQueue = prevMetrics.current
     ? prevMetrics.current.jobQueue.pending + prevMetrics.current.jobQueue.running
     : 0;
+
+  const dismissAlert = (metric: string) => {
+    setDismissedAlerts(prev => new Set([...prev, metric]));
+    setActiveAlerts(prev => prev.filter(a => a.metric !== metric));
+  };
+
+  const handleSaveThresholds = (t: MonitorThresholds, n: NotificationConfig) => {
+    setThresholds(t);
+    setNotifConfig(n);
+    setDismissedAlerts(new Set()); // reset dismissals when thresholds change
+    setShowThresholdPanel(false);
+    if (metrics) checkThresholds(metrics);
+  };
 
   return (
     <div className="space-y-6">
@@ -129,6 +453,22 @@ export default function RealtimeMonitorContent() {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
           )}
+          {/* Alert Thresholds Button */}
+          <button
+            onClick={() => setShowThresholdPanel(true)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors relative ${
+              activeAlerts.length > 0
+                ? 'bg-red-400/15 border-red-400/30 text-red-300' :'bg-muted border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Bell size={12} />
+            Thresholds
+            {activeAlerts.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-700 rounded-full flex items-center justify-center">
+                {activeAlerts.length}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setAutoRefresh(v => !v)}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
@@ -150,6 +490,9 @@ export default function RealtimeMonitorContent() {
         </div>
       </div>
 
+      {/* ── Active Alert Banners ── */}
+      <AlertBanner alerts={activeAlerts} onDismiss={dismissAlert} />
+
       {error && (
         <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3 text-sm text-red-400">
           <AlertTriangle size={15} />
@@ -160,7 +503,7 @@ export default function RealtimeMonitorContent() {
       {/* ── Top KPI Row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Job Queue Depth */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className={`bg-card border rounded-xl p-5 space-y-3 transition-colors ${activeAlerts.find(a => a.metric === 'job_queue_depth')?.severity === 'critical' ? 'border-red-400/40' : activeAlerts.find(a => a.metric === 'job_queue_depth')?.severity === 'warn' ? 'border-amber-400/40' : 'border-border'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
@@ -171,7 +514,7 @@ export default function RealtimeMonitorContent() {
             <Trend current={totalQueueDepth} prev={prevTotalQueue} />
           </div>
           <div className="flex items-end gap-2">
-            <span className="text-3xl font-800 text-foreground tabular-nums">
+            <span className={`text-3xl font-800 tabular-nums ${activeAlerts.find(a => a.metric === 'job_queue_depth')?.severity === 'critical' ? 'text-red-400' : activeAlerts.find(a => a.metric === 'job_queue_depth')?.severity === 'warn' ? 'text-amber-400' : 'text-foreground'}`}>
               {loading ? '—' : totalQueueDepth}
             </span>
             <span className="text-xs text-muted-foreground mb-1">jobs</span>
@@ -182,10 +525,13 @@ export default function RealtimeMonitorContent() {
             <span className="text-red-400">{metrics?.jobQueue.failed ?? 0} failed</span>
           </div>
           <LiveSparkline data={jobHistory} color="#a78bfa" />
+          <div className="text-[10px] text-muted-foreground/60">
+            Warn ≥{thresholds.jobQueueDepth.warn} · Critical ≥{thresholds.jobQueueDepth.critical}
+          </div>
         </div>
 
         {/* Redis Cache Hit Rate */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className={`bg-card border rounded-xl p-5 space-y-3 transition-colors ${activeAlerts.find(a => a.metric === 'redis_hit_rate')?.severity === 'critical' ? 'border-red-400/40' : activeAlerts.find(a => a.metric === 'redis_hit_rate')?.severity === 'warn' ? 'border-amber-400/40' : 'border-border'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
@@ -198,7 +544,7 @@ export default function RealtimeMonitorContent() {
           {metrics?.redis.available ? (
             <>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-800 text-foreground tabular-nums">
+                <span className={`text-3xl font-800 tabular-nums ${activeAlerts.find(a => a.metric === 'redis_hit_rate')?.severity === 'critical' ? 'text-red-400' : activeAlerts.find(a => a.metric === 'redis_hit_rate')?.severity === 'warn' ? 'text-amber-400' : 'text-foreground'}`}>
                   {metrics.redis.hitRate}
                 </span>
                 <span className="text-xs text-muted-foreground mb-1">% hit rate</span>
@@ -215,10 +561,13 @@ export default function RealtimeMonitorContent() {
             </div>
           )}
           <LiveSparkline data={redisHitHistory} color="#2dd4bf" />
+          <div className="text-[10px] text-muted-foreground/60">
+            Warn ≤{thresholds.redisHitRateDrop.warn}% · Critical ≤{thresholds.redisHitRateDrop.critical}%
+          </div>
         </div>
 
         {/* Concurrent Sessions */}
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className={`bg-card border rounded-xl p-5 space-y-3 transition-colors ${activeAlerts.find(a => a.metric === 'session_overload')?.severity === 'critical' ? 'border-red-400/40' : activeAlerts.find(a => a.metric === 'session_overload')?.severity === 'warn' ? 'border-amber-400/40' : 'border-border'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
@@ -232,7 +581,7 @@ export default function RealtimeMonitorContent() {
             />
           </div>
           <div className="flex items-end gap-2">
-            <span className="text-3xl font-800 text-foreground tabular-nums">
+            <span className={`text-3xl font-800 tabular-nums ${activeAlerts.find(a => a.metric === 'session_overload')?.severity === 'critical' ? 'text-red-400' : activeAlerts.find(a => a.metric === 'session_overload')?.severity === 'warn' ? 'text-amber-400' : 'text-foreground'}`}>
               {loading ? '—' : (metrics?.sessions.activeInterviews ?? 0)}
             </span>
             <span className="text-xs text-muted-foreground mb-1">interviews</span>
@@ -241,6 +590,9 @@ export default function RealtimeMonitorContent() {
             <span className="text-muted-foreground">{metrics?.sessions.activeSessions ?? 0} user sessions</span>
           </div>
           <LiveSparkline data={sessionHistory} color="#60a5fa" />
+          <div className="text-[10px] text-muted-foreground/60">
+            Warn ≥{thresholds.sessionOverload.warn} · Critical ≥{thresholds.sessionOverload.critical}
+          </div>
         </div>
 
         {/* Signaling Server */}
@@ -276,6 +628,11 @@ export default function RealtimeMonitorContent() {
           <Cpu size={16} className="text-primary" />
           <h2 className="text-sm font-700 text-foreground">AI Provider Latency</h2>
           <span className="text-xs text-muted-foreground ml-auto">p50 / p95 response time</span>
+          {activeAlerts.find(a => a.metric === 'ai_latency_spike') && (
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-600 ${activeAlerts.find(a => a.metric === 'ai_latency_spike')?.severity === 'critical' ? 'text-red-400 bg-red-400/10 border-red-400/20' : 'text-amber-400 bg-amber-400/10 border-amber-400/20'}`}>
+              {activeAlerts.find(a => a.metric === 'ai_latency_spike')?.severity?.toUpperCase()} ALERT
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -334,6 +691,9 @@ export default function RealtimeMonitorContent() {
               </div>
             </div>
           ))}
+        </div>
+        <div className="text-[10px] text-muted-foreground/60">
+          Threshold: Warn ≥{thresholds.aiLatencySpike.warn}ms · Critical ≥{thresholds.aiLatencySpike.critical}ms (highest p50 across providers)
         </div>
       </div>
 
@@ -483,6 +843,16 @@ export default function RealtimeMonitorContent() {
           <p>4. For 20K scale: add Redis adapter and run 4–10 instances behind a sticky-session load balancer.</p>
         </div>
       </div>
+
+      {/* ── Threshold Settings Panel ── */}
+      {showThresholdPanel && (
+        <ThresholdPanel
+          thresholds={thresholds}
+          notif={notifConfig}
+          onSave={handleSaveThresholds}
+          onClose={() => setShowThresholdPanel(false)}
+        />
+      )}
     </div>
   );
 }

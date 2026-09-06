@@ -1,9 +1,9 @@
 'use client';
 import React, { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { Bell, Plus, Save, Mail, MessageSquare, CheckCircle2, XCircle, Activity, Wifi, Zap, Shield, Edit2, ToggleLeft, ToggleRight, Clock, Send, X } from 'lucide-react';
+import { Bell, Plus, Save, Mail, MessageSquare, CheckCircle2, XCircle, Activity, Wifi, Zap, Shield, Edit2, ToggleLeft, ToggleRight, Clock, Send, X, Monitor } from 'lucide-react';
 
-type Category = 'connectivity' | 'performance' | 'automation' | 'security';
+type Category = 'connectivity' | 'performance' | 'automation' | 'security' | 'realtime';
 
 interface AlertThreshold {
   id: string;
@@ -15,11 +15,14 @@ interface AlertThreshold {
   unit: string;
   enabled: boolean;
   notify_email: boolean;
+  notify_slack: boolean;
   notify_sms: boolean;
   email_recipients: string[];
+  slack_webhook_url: string;
   sms_recipients: string[];
   cooldown_minutes: number;
   last_triggered?: string;
+  lower_is_bad?: boolean;
 }
 
 interface AlertNotification {
@@ -35,18 +38,24 @@ interface AlertNotification {
 }
 
 const INITIAL_THRESHOLDS: AlertThreshold[] = [
-  { id: 't1', name: 'Supabase Auth Latency', category: 'connectivity', metric_key: 'supabase_auth_latency_ms', warn_value: 250, critical_value: 500, unit: 'ms', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 15 },
-  { id: 't2', name: 'Supabase DB Latency', category: 'connectivity', metric_key: 'supabase_db_latency_ms', warn_value: 200, critical_value: 400, unit: 'ms', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 15 },
-  { id: 't3', name: 'Resend Email Latency', category: 'connectivity', metric_key: 'resend_latency_ms', warn_value: 300, critical_value: 2000, unit: 'ms', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], sms_recipients: [], cooldown_minutes: 30 },
-  { id: 't4', name: 'OpenAI API Latency', category: 'connectivity', metric_key: 'openai_latency_ms', warn_value: 1000, critical_value: 5000, unit: 'ms', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 30 },
-  { id: 't5', name: 'API Error Rate', category: 'performance', metric_key: 'api_error_rate_pct', warn_value: 5, critical_value: 15, unit: '%', enabled: true, notify_email: true, notify_sms: true, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], sms_recipients: ['+91-9876543210'], cooldown_minutes: 10, last_triggered: '2026-09-06 08:58' },
-  { id: 't6', name: 'DB Query P95 Latency', category: 'performance', metric_key: 'db_query_p95_ms', warn_value: 500, critical_value: 2000, unit: 'ms', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 20 },
-  { id: 't7', name: 'Cache Hit Rate', category: 'performance', metric_key: 'cache_hit_rate_pct', warn_value: 70, critical_value: 50, unit: '%', enabled: true, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 60 },
-  { id: 't8', name: 'Workflow Failure Rate', category: 'automation', metric_key: 'workflow_failure_rate_pct', warn_value: 10, critical_value: 25, unit: '%', enabled: true, notify_email: true, notify_sms: true, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], sms_recipients: ['+91-9876543210'], cooldown_minutes: 15 },
-  { id: 't9', name: 'Dead Letter Queue Depth', category: 'automation', metric_key: 'dlq_depth_count', warn_value: 10, critical_value: 50, unit: 'count', enabled: true, notify_email: true, notify_sms: true, email_recipients: ['admin@triveda.ai'], sms_recipients: ['+91-9876543210'], cooldown_minutes: 30 },
-  { id: 't10', name: 'Failed Login Attempts', category: 'security', metric_key: 'failed_login_per_min', warn_value: 5, critical_value: 20, unit: 'per_min', enabled: true, notify_email: true, notify_sms: true, email_recipients: ['admin@triveda.ai', 'security@triveda.ai'], sms_recipients: ['+91-9876543210'], cooldown_minutes: 5, last_triggered: '2026-09-06 09:01' },
-  { id: 't11', name: 'RLS Violations', category: 'security', metric_key: 'rls_violations_per_hour', warn_value: 3, critical_value: 10, unit: 'count', enabled: true, notify_email: true, notify_sms: true, email_recipients: ['admin@triveda.ai', 'security@triveda.ai'], sms_recipients: ['+91-9876543210'], cooldown_minutes: 10 },
-  { id: 't12', name: 'Concurrent Sessions', category: 'performance', metric_key: 'concurrent_sessions_count', warn_value: 500, critical_value: 1000, unit: 'count', enabled: false, notify_email: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], sms_recipients: [], cooldown_minutes: 60 },
+  // ── Real-Time Monitor thresholds (the 4 requested) ──────────────────────
+  { id: 'rt1', name: 'Job Queue Depth', category: 'realtime', metric_key: 'job_queue_depth', warn_value: 50, critical_value: 200, unit: 'jobs', enabled: true, notify_email: true, notify_slack: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 10 },
+  { id: 'rt2', name: 'Redis Hit Rate Drop', category: 'realtime', metric_key: 'redis_hit_rate', warn_value: 70, critical_value: 50, unit: '%', enabled: true, notify_email: true, notify_slack: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 30, lower_is_bad: true },
+  { id: 'rt3', name: 'AI Latency Spike', category: 'realtime', metric_key: 'ai_latency_spike', warn_value: 800, critical_value: 2000, unit: 'ms', enabled: true, notify_email: true, notify_slack: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 15 },
+  { id: 'rt4', name: 'Session Overload', category: 'realtime', metric_key: 'session_overload', warn_value: 200, critical_value: 500, unit: 'sessions', enabled: true, notify_email: true, notify_slack: true, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 20 },
+  // ── Existing thresholds ──────────────────────────────────────────────────
+  { id: 't1', name: 'Supabase Auth Latency', category: 'connectivity', metric_key: 'supabase_auth_latency_ms', warn_value: 250, critical_value: 500, unit: 'ms', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 15 },
+  { id: 't2', name: 'Supabase DB Latency', category: 'connectivity', metric_key: 'supabase_db_latency_ms', warn_value: 200, critical_value: 400, unit: 'ms', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 15 },
+  { id: 't3', name: 'Resend Email Latency', category: 'connectivity', metric_key: 'resend_latency_ms', warn_value: 300, critical_value: 2000, unit: 'ms', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 30 },
+  { id: 't4', name: 'OpenAI API Latency', category: 'connectivity', metric_key: 'openai_latency_ms', warn_value: 1000, critical_value: 5000, unit: 'ms', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 30 },
+  { id: 't5', name: 'API Error Rate', category: 'performance', metric_key: 'api_error_rate_pct', warn_value: 5, critical_value: 15, unit: '%', enabled: true, notify_email: true, notify_slack: false, notify_sms: true, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], slack_webhook_url: '', sms_recipients: ['+91-9876543210'], cooldown_minutes: 10, last_triggered: '2026-09-06 08:58' },
+  { id: 't6', name: 'DB Query P95 Latency', category: 'performance', metric_key: 'db_query_p95_ms', warn_value: 500, critical_value: 2000, unit: 'ms', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 20 },
+  { id: 't7', name: 'Cache Hit Rate', category: 'performance', metric_key: 'cache_hit_rate_pct', warn_value: 70, critical_value: 50, unit: '%', enabled: true, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 60 },
+  { id: 't8', name: 'Workflow Failure Rate', category: 'automation', metric_key: 'workflow_failure_rate_pct', warn_value: 10, critical_value: 25, unit: '%', enabled: true, notify_email: true, notify_slack: false, notify_sms: true, email_recipients: ['admin@triveda.ai', 'ops@triveda.ai'], slack_webhook_url: '', sms_recipients: ['+91-9876543210'], cooldown_minutes: 15 },
+  { id: 't9', name: 'Dead Letter Queue Depth', category: 'automation', metric_key: 'dlq_depth_count', warn_value: 10, critical_value: 50, unit: 'count', enabled: true, notify_email: true, notify_slack: false, notify_sms: true, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: ['+91-9876543210'], cooldown_minutes: 30 },
+  { id: 't10', name: 'Failed Login Attempts', category: 'security', metric_key: 'failed_login_per_min', warn_value: 5, critical_value: 20, unit: 'per_min', enabled: true, notify_email: true, notify_slack: false, notify_sms: true, email_recipients: ['admin@triveda.ai', 'security@triveda.ai'], slack_webhook_url: '', sms_recipients: ['+91-9876543210'], cooldown_minutes: 5, last_triggered: '2026-09-06 09:01' },
+  { id: 't11', name: 'RLS Violations', category: 'security', metric_key: 'rls_violations_per_hour', warn_value: 3, critical_value: 10, unit: 'count', enabled: true, notify_email: true, notify_slack: false, notify_sms: true, email_recipients: ['admin@triveda.ai', 'security@triveda.ai'], slack_webhook_url: '', sms_recipients: ['+91-9876543210'], cooldown_minutes: 10 },
+  { id: 't12', name: 'Concurrent Sessions', category: 'performance', metric_key: 'concurrent_sessions_count', warn_value: 500, critical_value: 1000, unit: 'count', enabled: false, notify_email: true, notify_slack: false, notify_sms: false, email_recipients: ['admin@triveda.ai'], slack_webhook_url: '', sms_recipients: [], cooldown_minutes: 60 },
 ];
 
 const MOCK_NOTIFICATIONS: AlertNotification[] = [
@@ -58,6 +67,7 @@ const MOCK_NOTIFICATIONS: AlertNotification[] = [
 ];
 
 const CATEGORY_CONFIG: Record<Category, { label: string; icon: React.ReactNode; color: string }> = {
+  realtime:    { label: 'Real-Time Monitor', icon: <Monitor size={14} />, color: 'text-violet-400 bg-violet-400/10 border-violet-400/20' },
   connectivity: { label: 'Connectivity', icon: <Wifi size={14} />, color: 'text-teal-400 bg-teal-400/10 border-teal-400/20' },
   performance: { label: 'Performance', icon: <Activity size={14} />, color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
   automation: { label: 'Automation', icon: <Zap size={14} />, color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
@@ -114,22 +124,41 @@ function EditModal({ threshold, onSave, onClose }: EditModalProps) {
             <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1.5">Cooldown (minutes)</label>
             <input type="number" value={form.cooldown_minutes} onChange={e => setForm(p => ({ ...p, cooldown_minutes: Number(e.target.value) }))} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-teal-500/50" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setForm(p => ({ ...p, notify_email: !p.notify_email }))}
-              className={`flex items-center gap-2 p-3 rounded-xl border transition-colors ${form.notify_email ? 'bg-teal-500/10 border-teal-500/30 text-teal-300' : 'bg-white/[0.03] border-white/[0.07] text-white/40'}`}
+              className={`flex items-center gap-1.5 p-2.5 rounded-xl border transition-colors text-[12px] ${form.notify_email ? 'bg-teal-500/10 border-teal-500/30 text-teal-300' : 'bg-white/[0.03] border-white/[0.07] text-white/40'}`}
             >
-              <Mail size={14} /> Email Alerts
-              {form.notify_email ? <ToggleRight size={16} className="ml-auto" /> : <ToggleLeft size={16} className="ml-auto" />}
+              <Mail size={13} /> Email
+              {form.notify_email ? <ToggleRight size={14} className="ml-auto" /> : <ToggleLeft size={14} className="ml-auto" />}
+            </button>
+            <button
+              onClick={() => setForm(p => ({ ...p, notify_slack: !p.notify_slack }))}
+              className={`flex items-center gap-1.5 p-2.5 rounded-xl border transition-colors text-[12px] ${form.notify_slack ? 'bg-violet-500/10 border-violet-500/30 text-violet-300' : 'bg-white/[0.03] border-white/[0.07] text-white/40'}`}
+            >
+              <MessageSquare size={13} /> Slack
+              {form.notify_slack ? <ToggleRight size={14} className="ml-auto" /> : <ToggleLeft size={14} className="ml-auto" />}
             </button>
             <button
               onClick={() => setForm(p => ({ ...p, notify_sms: !p.notify_sms }))}
-              className={`flex items-center gap-2 p-3 rounded-xl border transition-colors ${form.notify_sms ? 'bg-teal-500/10 border-teal-500/30 text-teal-300' : 'bg-white/[0.03] border-white/[0.07] text-white/40'}`}
+              className={`flex items-center gap-1.5 p-2.5 rounded-xl border transition-colors text-[12px] ${form.notify_sms ? 'bg-teal-500/10 border-teal-500/30 text-teal-300' : 'bg-white/[0.03] border-white/[0.07] text-white/40'}`}
             >
-              <MessageSquare size={14} /> SMS Alerts
-              {form.notify_sms ? <ToggleRight size={16} className="ml-auto" /> : <ToggleLeft size={16} className="ml-auto" />}
+              <MessageSquare size={13} /> SMS
+              {form.notify_sms ? <ToggleRight size={14} className="ml-auto" /> : <ToggleLeft size={14} className="ml-auto" />}
             </button>
           </div>
+          {form.notify_slack && (
+            <div>
+              <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1.5">Slack Webhook URL</label>
+              <input
+                type="url"
+                value={form.slack_webhook_url}
+                onChange={e => setForm(p => ({ ...p, slack_webhook_url: e.target.value }))}
+                placeholder="https://hooks.slack.com/services/..."
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[12px] text-white placeholder-white/25 focus:outline-none focus:border-violet-500/50"
+              />
+            </div>
+          )}
           {form.notify_email && (
             <div>
               <label className="text-[11px] text-white/40 uppercase tracking-wider block mb-1.5">Email Recipients</label>
@@ -178,7 +207,7 @@ function EditModal({ threshold, onSave, onClose }: EditModalProps) {
 
 export default function AlertThresholdsContent() {
   const [thresholds, setThresholds] = useState<AlertThreshold[]>(INITIAL_THRESHOLDS);
-  const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
+  const [activeCategory, setActiveCategory] = useState<Category | 'all'>('realtime');
   const [editingThreshold, setEditingThreshold] = useState<AlertThreshold | null>(null);
   const [activeTab, setActiveTab] = useState<'thresholds' | 'notifications'>('thresholds');
   const [testSent, setTestSent] = useState<string | null>(null);
@@ -203,7 +232,7 @@ export default function AlertThresholdsContent() {
     total: thresholds.length,
     enabled: thresholds.filter(t => t.enabled).length,
     email: thresholds.filter(t => t.notify_email).length,
-    sms: thresholds.filter(t => t.notify_sms).length,
+    slack: thresholds.filter(t => t.notify_slack).length,
   };
 
   return (
@@ -215,7 +244,7 @@ export default function AlertThresholdsContent() {
             <h1 className="text-xl font-700 text-white flex items-center gap-2">
               <Bell size={20} className="text-teal-400" /> Alert Threshold Configuration
             </h1>
-            <p className="text-[12px] text-white/40 mt-0.5">Set thresholds for connectivity, performance, and automation failures — notify Super Admin and ops teams via email/SMS</p>
+            <p className="text-[12px] text-white/40 mt-0.5">Configure thresholds for real-time monitor metrics, connectivity, performance, and security — notify via Slack or email</p>
           </div>
         </div>
 
@@ -225,7 +254,7 @@ export default function AlertThresholdsContent() {
             { label: 'Total Rules', value: stats.total, icon: <Bell size={16} />, color: 'text-teal-400', bg: 'bg-teal-400/10' },
             { label: 'Active Rules', value: stats.enabled, icon: <CheckCircle2 size={16} />, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
             { label: 'Email Channels', value: stats.email, icon: <Mail size={16} />, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-            { label: 'SMS Channels', value: stats.sms, icon: <MessageSquare size={16} />, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+            { label: 'Slack Channels', value: stats.slack, icon: <MessageSquare size={16} />, color: 'text-violet-400', bg: 'bg-violet-400/10' },
           ].map(s => (
             <div key={s.label} className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color} shrink-0`}>{s.icon}</div>
@@ -297,6 +326,11 @@ export default function AlertThresholdsContent() {
                             <Clock size={10} /> Last: {threshold.last_triggered}
                           </span>
                         )}
+                        {threshold.lower_is_bad && (
+                          <span className="text-[10px] text-blue-400 bg-blue-400/10 border border-blue-400/20 px-2 py-0.5 rounded-full">
+                            Lower = worse
+                          </span>
+                        )}
                         <button
                           onClick={() => toggleEnabled(threshold.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-500 border transition-colors ${threshold.enabled ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-white/5 text-white/30 border-white/10 hover:text-white/60'}`}
@@ -322,8 +356,9 @@ export default function AlertThresholdsContent() {
                       </div>
                       <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3">
                         <p className="text-[10px] text-white/30 uppercase tracking-wider">Channels</p>
-                        <div className="flex gap-1.5 mt-1.5">
+                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
                           {threshold.notify_email && <span className="flex items-center gap-1 text-[10px] text-teal-400 bg-teal-400/10 border border-teal-400/20 px-1.5 py-0.5 rounded-full"><Mail size={9} /> Email</span>}
+                          {threshold.notify_slack && <span className="flex items-center gap-1 text-[10px] text-violet-400 bg-violet-400/10 border border-violet-400/20 px-1.5 py-0.5 rounded-full"><MessageSquare size={9} /> Slack</span>}
                           {threshold.notify_sms && <span className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-400/10 border border-purple-400/20 px-1.5 py-0.5 rounded-full"><MessageSquare size={9} /> SMS</span>}
                         </div>
                       </div>
@@ -335,6 +370,11 @@ export default function AlertThresholdsContent() {
                           <Mail size={9} /> {r}
                         </span>
                       ))}
+                      {threshold.notify_slack && threshold.slack_webhook_url && (
+                        <span className="flex items-center gap-1 text-[10px] text-violet-400/60 bg-white/[0.03] border border-white/[0.06] px-2 py-0.5 rounded-full">
+                          <MessageSquare size={9} /> Slack webhook configured
+                        </span>
+                      )}
                       {threshold.sms_recipients.map(r => (
                         <span key={r} className="flex items-center gap-1 text-[10px] text-white/40 bg-white/[0.03] border border-white/[0.06] px-2 py-0.5 rounded-full">
                           <MessageSquare size={9} /> {r}
