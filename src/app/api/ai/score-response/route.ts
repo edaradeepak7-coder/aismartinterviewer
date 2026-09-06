@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { completion } from '@rocketnew/llm-sdk';
 import { consumeToken, TOKEN_BUCKET_CONFIGS, rateLimitedResponse, getUserKey } from '@/lib/security/tokenBucket';
+import { buildCacheKey, cacheGet, cacheSet, CACHE_TTL } from '@/lib/redis/cache';
 
 /**
  * POST /api/ai/score-response
@@ -31,6 +32,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'question_text and answer_text are required' }, { status: 400 });
     }
 
+    // Cache by question + answer + role — same answer to same question always scores the same
+    const cacheKey = buildCacheKey('ai:score', { question_text, answer_text, category, difficulty, role });
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json({ data: cached, cached: true });
+    }
+
     const prompt = `You are an expert interviewer. Score this ${category || 'Technical'} (${difficulty || 'Medium'} difficulty) interview response for the role "${role || 'Software Engineer'}".
 
 Question: ${question_text}
@@ -57,6 +65,7 @@ Return ONLY valid JSON:
     const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const scored = JSON.parse(cleaned);
 
+    await cacheSet(cacheKey, scored, CACHE_TTL.AI_RESPONSE);
     return NextResponse.json({ data: scored });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

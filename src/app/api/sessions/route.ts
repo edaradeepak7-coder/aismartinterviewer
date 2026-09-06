@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { secureJson, unauthorizedResponse, forbiddenResponse } from '@/lib/security/apiHelpers';
 import { writeAuditLogServer } from '@/lib/security/auditLog';
 import { sendSecurityAlert, getAdminEmails } from '@/lib/security/securityAlerts';
+import { buildCacheKey, cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '@/lib/redis/cache';
 
 const ADMIN_ROLES = ['super_admin', 'institution_admin', 'org_admin'];
 
@@ -20,7 +21,13 @@ export async function GET(request: NextRequest) {
 
     if (!profile || !ADMIN_ROLES.includes(profile.role)) return forbiddenResponse();
 
-    // Fetch recent user activity via user_profiles (last_seen / updated_at as proxy)
+    // Cache session list per admin user
+    const cacheKey = buildCacheKey('sessions:list', { userId: user.id });
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return secureJson({ data: cached });
+    }
+
     const { data, error } = await supabase
       .from('user_profiles')
       .select('id, full_name, email, role, tenant_id, updated_at, created_at')
@@ -29,7 +36,9 @@ export async function GET(request: NextRequest) {
 
     if (error) return secureJson({ error: 'Failed to fetch sessions' }, 500);
 
-    return secureJson({ data: data || [] });
+    const result = data || [];
+    await cacheSet(cacheKey, result, CACHE_TTL.SESSION_DATA);
+    return secureJson({ data: result });
   } catch {
     return secureJson({ error: 'Internal server error' }, 500);
   }
@@ -53,20 +62,21 @@ export async function DELETE(request: NextRequest) {
     const { userId } = body;
     if (!userId) return secureJson({ error: 'userId is required' }, 400);
 
-    // Get target user info for audit log
     const { data: targetProfile } = await supabase
       .from('user_profiles')
       .select('email, role')
       .eq('id', userId)
       .single();
 
-    // Sign out the target user via admin API (service role needed; graceful fallback)
     const { error } = await supabase.auth.admin.signOut(userId);
     if (error) return secureJson({ error: 'Failed to revoke session' }, 500);
 
+    // Invalidate session list cache after revocation
+    const cacheKey = buildCacheKey('sessions:list', { userId: user.id });
+    await cacheInvalidate(cacheKey);
+
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
 
-    // Write audit log
     await writeAuditLogServer(
       {
         user_id: user.id,
@@ -87,7 +97,6 @@ export async function DELETE(request: NextRequest) {
       supabase
     );
 
-    // Send security alert to admins
     const adminEmails = await getAdminEmails();
     await sendSecurityAlert({
       eventType: 'session_revoked',

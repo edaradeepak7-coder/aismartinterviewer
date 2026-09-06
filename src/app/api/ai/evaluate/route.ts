@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { completion } from '@rocketnew/llm-sdk';
 import { consumeToken, TOKEN_BUCKET_CONFIGS, rateLimitedResponse, getUserKey } from '@/lib/security/tokenBucket';
+import { buildCacheKey, cacheGet, cacheSet, CACHE_TTL } from '@/lib/redis/cache';
 
 interface ResponseItem {
   question_id: string;
@@ -100,14 +101,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Allow internal job processor calls to bypass user auth
     const isInternalJob = request.headers.get('x-internal-job') === 'true';
 
     if (!isInternalJob) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-      // Per-user token bucket rate limiting for AI evaluate
       const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
       const key = getUserKey(user.id, ip, 'ai-evaluate');
       const rl = consumeToken(key, TOKEN_BUCKET_CONFIGS.AI);
@@ -119,6 +118,13 @@ export async function POST(request: NextRequest) {
 
     if (!interview_id) {
       return NextResponse.json({ error: 'interview_id is required' }, { status: 400 });
+    }
+
+    // Return cached evaluation if already computed for this interview
+    const cacheKey = buildCacheKey('ai:eval', { interview_id });
+    const cached = await cacheGet<{ data: unknown; evaluation: unknown }>(cacheKey);
+    if (cached) {
+      return NextResponse.json({ ...cached, cached: true });
     }
 
     // 1. Fetch interview details
@@ -221,6 +227,9 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+
+    // Cache the completed evaluation result
+    await cacheSet(cacheKey, { data: result, evaluation }, CACHE_TTL.AI_EVALUATION);
 
     return NextResponse.json({ data: result, evaluation }, { status: 200 });
   } catch (err: any) {

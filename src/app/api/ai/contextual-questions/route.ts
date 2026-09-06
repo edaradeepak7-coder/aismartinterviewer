@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { completion } from '@rocketnew/llm-sdk';
+import { buildCacheKey, cacheGet, cacheSet, CACHE_TTL } from '@/lib/redis/cache';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -143,6 +144,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Cache by the full context — same conversation state returns same next question
+  const cacheKey = buildCacheKey('ai:ctxq', { resumeContext, previousQA, questionNumber, totalQuestions, askedTopics: body.askedTopics });
+  const cached = await cacheGet(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
+
   const systemPrompt = buildNLPContextPrompt(body);
 
   try {
@@ -169,7 +177,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No response from AI' }, { status: 500 });
     }
 
-    // Parse the JSON response
     let parsed: {
       question: string;
       category: string;
@@ -180,11 +187,9 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      // Strip any markdown code fences if present
       const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsed = JSON.parse(cleaned);
     } catch {
-      // Fallback: extract question from raw text
       return NextResponse.json({
         question: content.trim(),
         category: 'Technical',
@@ -195,6 +200,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    await cacheSet(cacheKey, parsed, CACHE_TTL.AI_RESPONSE);
     return NextResponse.json(parsed);
   } catch (error: any) {
     console.error('Contextual question generation error:', error);
