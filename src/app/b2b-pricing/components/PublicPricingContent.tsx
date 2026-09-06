@@ -33,7 +33,7 @@ const CREDIT_RULES = [
   { action: '30-min mock interview', credits: 15, icon: '🎤' },
   { action: '45-min mock interview', credits: 22, icon: '🎤' },
   { action: '60-min mock interview', credits: 30, icon: '🎤' },
-  { action: 'Voice interview add-on (ElevenLabs TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
+    { action: 'Voice interview add-on (AI TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
   { action: 'LSRW session (Listening/Speaking/Reading/Writing)', credits: 8, icon: '📚' },
   { action: 'Coding assessment', credits: 5, icon: '💻' },
   { action: 'Resume ATS check', credits: 3, icon: '📄' },
@@ -60,7 +60,7 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       { id: 'f0', text: '30 credits/month (3 × 20-min mock interviews @ 10 credits each)', included: true },
       { id: 'f1', text: '3 AI mock interviews/month (20-min, 10 credits each)', included: true },
-      { id: 'f2', text: '5 voice minutes (ElevenLabs TTS) — +5 credits/session', included: true },
+            { id: 'f2', text: '5 voice minutes (AI voice) — +5 credits/session', included: true },
       { id: 'f3', text: '2 AI coaching interactions (2 credits each)', included: true },
       { id: 'f4', text: 'Basic Communication score', included: true },
       { id: 'f5', text: 'Interview history (last 5)', included: true },
@@ -87,12 +87,12 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       { id: 'f0', text: '100 credits/month — covers exactly 10 sessions', included: true },
       { id: 'f1', text: '10 × 20-min mock interviews (10 credits each)', included: true },
-      { id: 'f2', text: '30 voice minutes/month (ElevenLabs TTS/STT)', included: true },
+            { id: 'f2', text: '30 voice minutes/month (AI voice)', included: true },
       { id: 'f3', text: '10 AI coaching interactions (2 credits each)', included: true },
       { id: 'f4', text: '5 Resume ATS checks (3 credits each = 15 credits)', included: true },
-      { id: 'f5', text: '500 emails/month (Brevo transactional)', included: true },
+            { id: 'f5', text: '500 transactional emails/month', included: true },
       { id: 'f6', text: '5 GB storage', included: true },
-      { id: 'f7', text: '1 Airtable integration, 1 Calendly connection', included: true },
+            { id: 'f7', text: '1 data integration, 1 scheduling connection', included: true },
       { id: 'f8', text: 'Communication + Clarity + Domain scores', included: true },
       { id: 'f9', text: 'Answer improvement suggestions', included: true },
       { id: 'f10', text: 'Email support (48h SLA)', included: true },
@@ -121,11 +121,11 @@ const FALLBACK_TIERS: PricingTier[] = [
       { id: 'f2', text: '4 × 30-min mock interviews (15 credits each = 60 credits)', included: true },
       { id: 'f3', text: '5 LSRW sessions (8 credits each = 40 credits)', included: true },
       { id: 'f4', text: '10 AI coaching interactions (2 credits each = 20 credits)', included: true },
-      { id: 'f5', text: '300 voice minutes/month (ElevenLabs TTS/STT)', included: true },
-      { id: 'f6', text: '5,000 emails/month (Brevo transactional + marketing)', included: true },
+      { id: 'f5', text: '300 voice minutes/month (AI voice)', included: true },
+      { id: 'f6', text: '5,000 emails/month (transactional + marketing)', included: true },
       { id: 'f7', text: 'Unlimited Resume ATS checks (3 credits each)', included: true },
       { id: 'f8', text: '25 GB storage', included: true },
-      { id: 'f9', text: 'Multiple Airtable + Calendly integrations', included: true },
+            { id: 'f9', text: 'Multiple data + scheduling integrations', included: true },
       { id: 'f10', text: 'Full per-answer AI coaching + model answer library', included: true },
       { id: 'f11', text: 'Company-specific prep packs (50 credits each)', included: true },
       { id: 'f12', text: 'Progress analytics dashboard', included: true },
@@ -153,11 +153,11 @@ const FALLBACK_TIERS: PricingTier[] = [
       { id: 'f2', text: '20 × 30-min mock interviews (15 credits each = 300 credits)', included: true },
       { id: 'f3', text: '10 × 45-min mock interviews (22 credits each = 220 credits)', included: true },
       { id: 'f4', text: '10 LSRW sessions (8 credits each = 80 credits)', included: true },
-      { id: 'f5', text: '1,000+ voice minutes/month (ElevenLabs TTS/STT)', included: true },
-      { id: 'f6', text: '25,000+ emails/month (Brevo transactional + campaigns)', included: true },
+      { id: 'f5', text: '1,000+ voice minutes/month (AI voice)', included: true },
+      { id: 'f6', text: '25,000+ emails/month (transactional + campaigns)', included: true },
       { id: 'f7', text: '100 GB storage', included: true },
       { id: 'f8', text: 'Unlimited Resume ATS checks (3 credits each)', included: true },
-      { id: 'f9', text: 'Unlimited Airtable + Calendly integrations', included: true },
+            { id: 'f9', text: 'Unlimited data + scheduling integrations', included: true },
       { id: 'f10', text: 'Bulk candidate import & placement drive management', included: true },
       { id: 'f11', text: 'Dedicated success manager', included: true },
       { id: 'f12', text: 'Custom interview scenarios + question banks', included: true },
@@ -323,7 +323,7 @@ export default function PublicPricingContent() {
 
         <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-8">
           <AlertCircle size={14} className="text-amber-600" />
-          <span className="text-xs text-amber-700 font-600">Pricing reflects real infrastructure costs: AI APIs, ElevenLabs voice, Supabase, Railway, Brevo, Airtable, Calendly, and Razorpay.</span>
+          <span className="text-xs text-amber-700 font-600">Pricing reflects real infrastructure costs: AI models, voice processing, database, hosting, email delivery, and scheduling services.</span>
         </div>
 
         {/* Billing Toggle */}

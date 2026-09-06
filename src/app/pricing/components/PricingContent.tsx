@@ -57,7 +57,7 @@ const CREDIT_RULES = [
   { action: '30-min mock interview', credits: 15, icon: '🎤' },
   { action: '45-min mock interview', credits: 22, icon: '🎤' },
   { action: '60-min mock interview', credits: 30, icon: '🎤' },
-  { action: 'Voice interview add-on (ElevenLabs TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
+  { action: 'Voice interview add-on (AI TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
   { action: 'LSRW session', credits: 8, icon: '📚' },
   { action: 'Coding assessment', credits: 5, icon: '💻' },
   { action: 'Resume ATS check', credits: 3, icon: '📄' },
@@ -85,7 +85,7 @@ const plans: Plan[] = [
     features: [
       '30 credits/month',
       '3 × 20-min mock interviews (10 credits each)',
-      '5 voice minutes (ElevenLabs TTS) — +5 credits/session',
+      '5 voice minutes (AI voice) — +5 credits/session',
       '2 AI coaching interactions (2 credits each)',
       'Basic Communication score',
       'Interview history (last 5)',
@@ -99,7 +99,7 @@ const plans: Plan[] = [
     name: 'Starter',
     monthlyPrice: 499,
     annualPrice: 399,
-    description: 'Full AI coaching for serious candidates. ~$175/mo infra reserve.',
+    description: 'Full AI coaching for serious candidates.',
     infraReserve: '~$175/mo infra reserve',
     color: 'text-blue-700',
     accentColor: '#2563EB',
@@ -113,12 +113,12 @@ const plans: Plan[] = [
     features: [
       '100 credits/month — covers exactly 10 sessions',
       '10 × 20-min mock interviews (10 credits each)',
-      '30 voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
+      '30 voice minutes/month (AI voice) — +5 credits/voice session',
       '10 AI coaching interactions (2 credits each)',
       '5 Resume ATS checks (3 credits each)',
-      '500 emails/month (Brevo transactional)',
+      '500 transactional emails/month',
       '5 GB storage',
-      '1 Airtable integration, 1 Calendly connection',
+      '1 calendar integration, 1 scheduling connection',
       'Communication + Clarity + Domain scores',
       'Answer improvement suggestions',
       'Email support (48h SLA)',
@@ -132,7 +132,7 @@ const plans: Plan[] = [
     name: 'Growth',
     monthlyPrice: 1499,
     annualPrice: 1199,
-    description: 'Serious prep with analytics & coaching. ~$350/mo infra reserve.',
+    description: 'Serious prep with analytics & coaching.',
     infraReserve: '~$350/mo infra reserve',
     color: 'text-violet-700',
     accentColor: '#7C3AED',
@@ -150,11 +150,11 @@ const plans: Plan[] = [
       '4 × 30-min mock interviews (15 credits = 60 credits)',
       '5 LSRW sessions (8 credits each = 40 credits)',
       '10 AI coaching interactions (2 credits each = 20 credits)',
-      '300 voice minutes/month (ElevenLabs TTS/STT)',
-      '5,000 emails/month (Brevo transactional + marketing)',
+      '300 voice minutes/month (AI voice)',
+      '5,000 emails/month (transactional + marketing)',
       'Unlimited Resume ATS checks (3 credits each)',
       '25 GB storage',
-      'Multiple Airtable + Calendly integrations',
+      'Multiple calendar + scheduling integrations',
       'Full per-answer AI coaching + model answer library',
       'Company-specific prep packs (50 credits each)',
       'Progress analytics dashboard',
@@ -169,7 +169,7 @@ const plans: Plan[] = [
     name: 'Pro',
     monthlyPrice: 3499,
     annualPrice: 2799,
-    description: 'Maximum prep power for placement-focused candidates. ~$600/mo infra reserve.',
+    description: 'Maximum prep power for placement-focused candidates.',
     infraReserve: '~$600/mo infra reserve',
     color: 'text-amber-700',
     accentColor: '#D97706',
@@ -186,11 +186,11 @@ const plans: Plan[] = [
       '20 × 30-min mock interviews (15 credits = 300 credits)',
       '10 × 45-min mock interviews (22 credits = 220 credits)',
       '10 LSRW sessions (8 credits each = 80 credits)',
-      '1,000+ voice minutes/month (ElevenLabs TTS/STT)',
-      '25,000+ emails/month (Brevo transactional + campaigns)',
+      '1,000+ voice minutes/month (AI voice)',
+      '25,000+ emails/month (transactional + campaigns)',
       '100 GB storage',
       'Unlimited Resume ATS checks (3 credits each)',
-      'Unlimited Airtable + Calendly integrations',
+      'Unlimited calendar + scheduling integrations',
       'Bulk candidate import & placement drive management',
       'Dedicated success manager',
       'Custom interview scenarios + question banks',
@@ -265,7 +265,7 @@ export default function PricingContent() {
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: 'Triveda AI Interview Platform',
+        name: 'AI Interview Platform',
         description: cartSummary,
         order_id: data.orderId,
         handler: async (response: any) => {
@@ -689,7 +689,7 @@ export default function PricingContent() {
                   {processing ? 'Processing...' : 'Pay Securely'}
                 </button>
                 <p className="text-xs text-slate-400 text-center mt-2 flex items-center justify-center gap-1">
-                  <Shield size={10} /> Secured by Razorpay
+                  <Shield size={10} /> Secured payment processing
                 </p>
               </div>
             </div>

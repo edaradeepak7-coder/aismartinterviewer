@@ -39,7 +39,7 @@ const CREDIT_RULES = [
   { action: '30-min AI interview session', credits: 15, icon: '🎤' },
   { action: '45-min AI interview session', credits: 22, icon: '🎤' },
   { action: '60-min AI interview session', credits: 30, icon: '🎤' },
-  { action: 'Voice interview add-on (ElevenLabs TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
+  { action: 'Voice interview add-on (AI TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
   { action: 'LSRW session', credits: 8, icon: '📚' },
   { action: 'Coding assessment', credits: 5, icon: '💻' },
   { action: 'Resume ATS check', credits: 3, icon: '📄' },
@@ -75,8 +75,8 @@ const b2bPlans: B2BPlan[] = [
     features: [
       '500 session credits/month — covers 50 × 20-min interviews (10 credits each)',
       '50 AI interview sessions/month (20-min @ 10 credits, 30-min @ 15 credits)',
-      '30 voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
-      '500 emails/month (Brevo transactional)',
+      '30 voice minutes/month (AI voice) — +5 credits/voice session',
+      '500 transactional emails/month',
       '10 GB storage',
       'Up to 5 recruiter seats',
       'Candidate scoring & ranking (4 credits/evaluation)',
@@ -85,7 +85,7 @@ const b2bPlans: B2BPlan[] = [
       'Email support (48h SLA)',
       'Candidate feedback reports',
       'Job posting management',
-      '1 Airtable integration, 1 Calendly connection',
+      '1 data integration, 1 scheduling connection',
       'Overage: ₹5/credit — buy extra credits anytime',
     ],
   },
@@ -116,8 +116,8 @@ const b2bPlans: B2BPlan[] = [
     features: [
       '2,000 session credits/month — covers 200 × 20-min interviews (10 credits each)',
       '200 AI interview sessions/month (mix of 20/30/45-min)',
-      '300 voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
-      '5,000 emails/month (Brevo transactional + marketing)',
+      '300 voice minutes/month (AI voice) — +5 credits/voice session',
+      '5,000 transactional emails/month',
       '50 GB storage',
       'Up to 25 recruiter seats',
       'Advanced candidate analytics dashboard',
@@ -128,7 +128,7 @@ const b2bPlans: B2BPlan[] = [
       'Bulk candidate import/export',
       'Interview recording & playback',
       'Team collaboration tools',
-      'Multiple Airtable + Calendly integrations',
+      'Multiple data + scheduling integrations',
       'Overage: ₹4/credit — buy extra credits anytime',
     ],
   },
@@ -158,8 +158,8 @@ const b2bPlans: B2BPlan[] = [
     features: [
       '10,000 session credits/month — covers 1,000 × 20-min interviews (10 credits each)',
       '1,000+ AI interview sessions/month (mix of all durations)',
-      '1,000+ voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
-      '25,000+ emails/month (Brevo transactional + campaigns)',
+      '1,000+ voice minutes/month (AI voice) — +5 credits/voice session',
+      '25,000+ transactional emails/month',
       '200 GB storage',
       'Unlimited recruiter seats',
       'Dedicated success manager',
@@ -172,7 +172,7 @@ const b2bPlans: B2BPlan[] = [
       'Custom reporting & BI integration',
       'Priority phone support (1h SLA)',
       'Quarterly business reviews',
-      'Unlimited Airtable + Calendly integrations',
+      'Unlimited data + scheduling integrations',
       'Overage: ₹3/credit — buy extra credits anytime',
     ],
   },
@@ -219,12 +219,12 @@ export default function B2BPricingContent() {
   };
 
   const faqs = [
-    { q: 'What are session credits and how are they consumed?', a: 'Session credits are consumed per AI interview action. A 20-min interview = 10 credits. A 30-min interview = 15 credits. A 45-min interview = 22 credits. A 60-min interview = 30 credits. Voice add-on (ElevenLabs TTS) = +5 credits per session. AI evaluation/scoring = 4 credits. AI coaching = 2 credits. Credits reset monthly.' },
+    { q: 'What are session credits and how are they consumed?', a: 'Session credits are consumed per AI interview action. A 20-min interview = 10 credits. A 30-min interview = 15 credits. A 45-min interview = 22 credits. A 60-min interview = 30 credits. Voice add-on (AI TTS) = +5 credits per session. AI evaluation/scoring = 4 credits. AI coaching = 2 credits. Credits reset monthly.' },
     { q: 'How does seat management work?', a: 'Each recruiter seat gives one team member full access — posting jobs, running AI interviews, scoring candidates, and viewing analytics. Add or remove seats anytime from your admin dashboard.' },
     { q: 'What happens when I exceed my included credits?', a: 'You are billed at the overage rate for your plan. Starter: ₹5/credit. Professional: ₹4/credit. Business: ₹3/credit. Alternatively, buy bulk credit packs at a discounted rate before you run out.' },
-    { q: 'How is ElevenLabs voice usage calculated?', a: 'ElevenLabs TTS costs ~$0.10/1,000 characters (~₹8/1,000 chars). STT costs ~$0.22/hour (~₹18/hr). Your included voice minutes cover typical usage. Each voice session also consumes +5 credits from your session credit pool.' },
-    { q: 'What does Razorpay cost?', a: 'Razorpay has no fixed monthly subscription. Standard rate is 2% + GST per successful transaction. This is a variable payment-processing cost, not included in plan pricing.' },
-    { q: 'Can I mix Razorpay and Stripe for payments?', a: 'Yes. Indian companies can pay via Razorpay (INR). International companies can pay via Stripe (USD/EUR/GBP). Both gateways are fully supported.' },
+    { q: 'How is AI voice usage calculated?', a: 'AI voice (TTS) costs are based on characters processed. STT costs are based on audio duration. Your included voice minutes cover typical usage. Each voice session also consumes +5 credits from your session credit pool.' },
+    { q: 'What are the payment processing fees?', a: 'Payment processing has no fixed monthly subscription. Standard rate is 2% + GST per successful transaction. This is a variable cost, not included in plan pricing.' },
+    { q: 'What payment methods are supported?', a: 'Indian companies can pay via UPI, net banking, or cards in INR. International companies can pay via card in USD/EUR/GBP. Multiple payment methods are fully supported.' },
     { q: 'Is there a free trial for B2B plans?', a: 'Yes — Recruiter Starter and Professional plans come with a 14-day free trial, no credit card required. Business/Enterprise plans include a custom POC period.' },
     { q: 'Can I buy extra credits without upgrading my plan?', a: 'Yes. Bulk credit packs are available at discounted rates. The more you buy, the lower the per-credit cost. Credits from packs never expire within your subscription period.' },
   ];
@@ -256,7 +256,7 @@ export default function B2BPricingContent() {
           </p>
           <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 mb-4">
             <AlertCircle size={13} className="text-amber-400" />
-            <span className="text-amber-300 text-xs">Pricing reflects real infrastructure costs: OpenAI, Groq, ElevenLabs, Supabase, Railway, Brevo, Airtable, Calendly. Razorpay: 2% + GST per transaction (variable, not in plan price).</span>
+            <span className="text-amber-300 text-xs">Pricing reflects real infrastructure costs: AI models, voice processing, database, hosting, email delivery, and scheduling services. Payment processing: 2% + GST per transaction (variable, not in plan price).</span>
           </div>
 
           {/* Credit Rules Toggle */}
@@ -483,7 +483,6 @@ export default function B2BPricingContent() {
               <thead>
                 <tr className="border-b border-slate-700">
                   <th className="text-left px-5 py-3 text-xs font-700 text-slate-400">Action</th>
-                  <th className="text-center px-3 py-3 text-xs font-700 text-slate-400">Credits</th>
                   <th className="text-center px-3 py-3 text-xs font-700 text-sky-400">Starter (500)</th>
                   <th className="text-center px-3 py-3 text-xs font-700 text-violet-400">Professional (2,000)</th>
                   <th className="text-center px-3 py-3 text-xs font-700 text-amber-400">Business (10,000)</th>

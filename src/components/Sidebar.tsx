@@ -82,6 +82,7 @@ const candidateNav: NavGroup[] = [
       { label: 'Inbox', href: '/inbox', icon: <Inbox size={16} />, accent: 'new' },
       { label: 'Notifications', href: '/notifications', icon: <Bell size={16} /> },
       { label: 'Subscription', href: '/subscription', icon: <CreditCard size={16} /> },
+      { label: 'Billing', href: '/billing', icon: <CreditCard size={16} />, accent: 'new' },
       { label: 'Pricing Plans', href: '/pricing', icon: <Zap size={16} />, accent: 'new' },
       { label: 'Settings', href: '/settings', icon: <Settings size={16} /> },
     ],
