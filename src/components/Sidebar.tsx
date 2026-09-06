@@ -224,6 +224,7 @@ const adminNav: NavGroup[] = [
       { label: 'Workflow Scheduler', href: '/workflow-scheduler', icon: <CalendarClock size={16} />, accent: 'new' },
       { label: 'Automation Monitor', href: '/automation-monitor', icon: <MonitorDot size={16} />, accent: 'new' },
       { label: 'Dead-Letter Queue', href: '/dead-letter-queue', icon: <Layers size={16} />, accent: 'new' },
+      { label: 'Job Queue', href: '/job-queue', icon: <Rocket size={16} />, accent: 'new' },
     ],
   },
   {

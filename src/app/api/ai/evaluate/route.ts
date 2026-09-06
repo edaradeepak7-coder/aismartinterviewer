@@ -99,14 +99,20 @@ Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Per-user token bucket rate limiting for AI evaluate
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-    const key = getUserKey(user.id, ip, 'ai-evaluate');
-    const rl = consumeToken(key, TOKEN_BUCKET_CONFIGS.AI);
-    if (!rl.allowed) return rateLimitedResponse(rl, 'ai-evaluate');
+    // Allow internal job processor calls to bypass user auth
+    const isInternalJob = request.headers.get('x-internal-job') === 'true';
+
+    if (!isInternalJob) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+      // Per-user token bucket rate limiting for AI evaluate
+      const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+      const key = getUserKey(user.id, ip, 'ai-evaluate');
+      const rl = consumeToken(key, TOKEN_BUCKET_CONFIGS.AI);
+      if (!rl.allowed) return rateLimitedResponse(rl, 'ai-evaluate');
+    }
 
     const body = await request.json();
     const { interview_id } = body;
