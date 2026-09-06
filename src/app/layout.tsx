@@ -10,6 +10,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import PageLoader from '@/components/PageLoader';
 import { Suspense } from 'react';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import TicketAlertProvider from '@/components/TicketAlertProvider';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -45,8 +47,10 @@ export default function RootLayout({
           <AuthProvider>
             <AchievementProvider>
               <WalkthroughProvider>
-                <PageLoader />
-                {children}
+                <TicketAlertProvider>
+                  <PageLoader />
+                  {children}
+                </TicketAlertProvider>
               </WalkthroughProvider>
             </AchievementProvider>
           </AuthProvider>
@@ -61,6 +65,7 @@ export default function RootLayout({
             },
           }}
         />
+        <ServiceWorkerRegistrar />
 
         <script type="module" async src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Faismartint3906back.builtwithrocket.new&_be=https%3A%2F%2Fappanalytics.rocket.new&_v=0.1.20" />
         <script type="module" defer src="https://static.rocket.new/rocket-shot.js?v=0.0.3" /></body>
