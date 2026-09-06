@@ -1,9 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import {
-  Check, Users, Zap, Crown, Building2, ChevronDown, ChevronUp, Minus, Plus,
-  ArrowRight, Shield, Clock, BarChart3, Headphones, Globe, AlertCircle, Mic, FileText, TrendingUp, Sparkles
-} from 'lucide-react';
+import { Check, Zap, Crown, Building2, ChevronDown, ChevronUp, Minus, Plus, Shield, BarChart3, Headphones, Globe, AlertCircle, Coins, X, Info } from 'lucide-react';
 import Link from 'next/link';
 
 interface B2BPlan {
@@ -15,14 +12,16 @@ interface B2BPlan {
   annualPerSeat: number;
   minSeats: number;
   maxSeats: number | null;
-  sessionCreditsIncluded: number | 'Unlimited';
+  // Credit allowances
+  sessionCredits: number;
+  aiInteractionCredits: number;
   voiceMinutes: number | 'Unlimited';
   emailsPerMonth: number | 'Unlimited';
-  aiInteractions: number | 'Unlimited';
   storage: string;
-  overageAI: string;
+  // Overage
+  overageCreditRate: string;
   overageVoice: string;
-  extraCreditPrice: number;
+  // Style
   color: string;
   gradient: string;
   borderColor: string;
@@ -34,24 +33,38 @@ interface B2BPlan {
   supportSla: string;
 }
 
+// ─── Credit Consumption Rules ─────────────────────────────────────────────────
+const CREDIT_RULES = [
+  { action: '20-min AI interview session', credits: 10, icon: '🎤' },
+  { action: '30-min AI interview session', credits: 15, icon: '🎤' },
+  { action: '45-min AI interview session', credits: 22, icon: '🎤' },
+  { action: '60-min AI interview session', credits: 30, icon: '🎤' },
+  { action: 'Voice interview add-on (ElevenLabs TTS)', credits: 5, icon: '🔊', note: 'per session, on top of base' },
+  { action: 'LSRW session', credits: 8, icon: '📚' },
+  { action: 'Coding assessment', credits: 5, icon: '💻' },
+  { action: 'Resume ATS check', credits: 3, icon: '📄' },
+  { action: 'AI evaluation / scoring', credits: 4, icon: '🤖' },
+  { action: 'AI coaching / Q&A interaction', credits: 2, icon: '💬' },
+  { action: 'Company pack redemption', credits: 50, icon: '🏢' },
+];
+
 const b2bPlans: B2BPlan[] = [
   {
     id: 'recruiter-starter',
     name: 'Recruiter Starter',
     tagline: 'For small teams hiring 1–10 roles/month',
     infraReserve: '~$175/mo infrastructure reserve',
-    monthlyPerSeat: 4999,
-    annualPerSeat: 3999,
+    monthlyPerSeat: 2999,
+    annualPerSeat: 2399,
     minSeats: 1,
     maxSeats: 5,
-    sessionCreditsIncluded: 50,
+    sessionCredits: 500,
+    aiInteractionCredits: 500,
     voiceMinutes: 30,
     emailsPerMonth: 500,
-    aiInteractions: 100,
     storage: '10 GB',
-    overageAI: '₹15/extra interaction',
+    overageCreditRate: '₹5/credit',
     overageVoice: '₹2/extra voice min',
-    extraCreditPrice: 49,
     color: 'text-sky-400',
     gradient: 'from-sky-500/20 to-cyan-500/10',
     borderColor: 'border-sky-500/40',
@@ -60,19 +73,20 @@ const b2bPlans: B2BPlan[] = [
     sla: '99.5% uptime',
     supportSla: '48h email',
     features: [
-      '100 AI interactions/month (interviews + evaluations)',
-      '50 AI interview session credits/month',
-      '30 voice minutes/month (ElevenLabs TTS/STT)',
+      '500 session credits/month — covers 50 × 20-min interviews (10 credits each)',
+      '50 AI interview sessions/month (20-min @ 10 credits, 30-min @ 15 credits)',
+      '30 voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
       '500 emails/month (Brevo transactional)',
       '10 GB storage',
       'Up to 5 recruiter seats',
-      'Candidate scoring & ranking',
+      'Candidate scoring & ranking (4 credits/evaluation)',
       'Interview question bank (500+ questions)',
       'Basic ATS integration (CSV export)',
       'Email support (48h SLA)',
       'Candidate feedback reports',
       'Job posting management',
       '1 Airtable integration, 1 Calendly connection',
+      'Overage: ₹5/credit — buy extra credits anytime',
     ],
   },
   {
@@ -80,18 +94,17 @@ const b2bPlans: B2BPlan[] = [
     name: 'Recruiter Professional',
     tagline: 'For scaling teams with structured pipelines',
     infraReserve: '~$350–400/mo infrastructure reserve',
-    monthlyPerSeat: 9999,
-    annualPerSeat: 7999,
+    monthlyPerSeat: 7999,
+    annualPerSeat: 6399,
     minSeats: 5,
     maxSeats: 25,
-    sessionCreditsIncluded: 500,
+    sessionCredits: 2000,
+    aiInteractionCredits: 2000,
     voiceMinutes: 300,
     emailsPerMonth: 5000,
-    aiInteractions: 500,
     storage: '50 GB',
-    overageAI: '₹12/extra interaction',
+    overageCreditRate: '₹4/credit',
     overageVoice: '₹1.5/extra voice min',
-    extraCreditPrice: 39,
     color: 'text-violet-400',
     gradient: 'from-violet-500/20 to-purple-500/10',
     borderColor: 'border-violet-500/40',
@@ -101,9 +114,9 @@ const b2bPlans: B2BPlan[] = [
     sla: '99.7% uptime',
     supportSla: '12h priority',
     features: [
-      '500 AI interactions/month (interviews, coaching, agents)',
-      '500 AI interview session credits/month',
-      '300 voice minutes/month (ElevenLabs TTS/STT)',
+      '2,000 session credits/month — covers 200 × 20-min interviews (10 credits each)',
+      '200 AI interview sessions/month (mix of 20/30/45-min)',
+      '300 voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
       '5,000 emails/month (Brevo transactional + marketing)',
       '50 GB storage',
       'Up to 25 recruiter seats',
@@ -116,6 +129,7 @@ const b2bPlans: B2BPlan[] = [
       'Interview recording & playback',
       'Team collaboration tools',
       'Multiple Airtable + Calendly integrations',
+      'Overage: ₹4/credit — buy extra credits anytime',
     ],
   },
   {
@@ -127,14 +141,13 @@ const b2bPlans: B2BPlan[] = [
     annualPerSeat: 15999,
     minSeats: 25,
     maxSeats: null,
-    sessionCreditsIncluded: 2000,
+    sessionCredits: 10000,
+    aiInteractionCredits: 10000,
     voiceMinutes: 1000,
     emailsPerMonth: 25000,
-    aiInteractions: 2000,
     storage: '200 GB',
-    overageAI: '₹10/extra interaction',
+    overageCreditRate: '₹3/credit',
     overageVoice: '₹1/extra voice min',
-    extraCreditPrice: 29,
     color: 'text-amber-400',
     gradient: 'from-amber-500/20 to-orange-500/10',
     borderColor: 'border-amber-500/40',
@@ -143,9 +156,9 @@ const b2bPlans: B2BPlan[] = [
     sla: '99.9% uptime SLA',
     supportSla: '1h phone',
     features: [
-      '2,000+ AI interactions/month (interviews, evaluation, agents, content)',
-      '2,000 AI interview session credits/month',
-      '1,000+ voice minutes/month (ElevenLabs TTS/STT)',
+      '10,000 session credits/month — covers 1,000 × 20-min interviews (10 credits each)',
+      '1,000+ AI interview sessions/month (mix of all durations)',
+      '1,000+ voice minutes/month (ElevenLabs TTS/STT) — +5 credits/voice session',
       '25,000+ emails/month (Brevo transactional + campaigns)',
       '200 GB storage',
       'Unlimited recruiter seats',
@@ -160,15 +173,16 @@ const b2bPlans: B2BPlan[] = [
       'Priority phone support (1h SLA)',
       'Quarterly business reviews',
       'Unlimited Airtable + Calendly integrations',
+      'Overage: ₹3/credit — buy extra credits anytime',
     ],
   },
 ];
 
 const bulkCreditPacks = [
-  { id: 'pack-100', credits: 100, price: 3900, bonus: 0, label: '100 Credits', perCredit: '₹39/credit' },
-  { id: 'pack-250', credits: 250, price: 8750, bonus: 25, label: '250 Credits', popular: true, perCredit: '₹31/credit' },
-  { id: 'pack-500', credits: 500, price: 14500, bonus: 75, label: '500 Credits', perCredit: '₹25/credit' },
-  { id: 'pack-1000', credits: 1000, price: 24000, bonus: 200, label: '1,000 Credits', perCredit: '₹20/credit' },
+  { id: 'pack-100', credits: 100, price: 490, bonus: 0, label: '100 Credits', perCredit: '₹4.9/credit' },
+  { id: 'pack-500', credits: 500, price: 2000, bonus: 50, label: '500 Credits', popular: true, perCredit: '₹3.6/credit' },
+  { id: 'pack-1000', credits: 1000, price: 3500, bonus: 150, label: '1,000 Credits', perCredit: '₹3.1/credit' },
+  { id: 'pack-5000', credits: 5000, price: 14000, bonus: 1000, label: '5,000 Credits', perCredit: '₹2.5/credit' },
 ];
 
 export default function B2BPricingContent() {
@@ -179,6 +193,7 @@ export default function B2BPricingContent() {
     'recruiter-business': 30,
   });
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [showCreditRules, setShowCreditRules] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', company: '', email: '', seats: '', message: '' });
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -204,13 +219,14 @@ export default function B2BPricingContent() {
   };
 
   const faqs = [
+    { q: 'What are session credits and how are they consumed?', a: 'Session credits are consumed per AI interview action. A 20-min interview = 10 credits. A 30-min interview = 15 credits. A 45-min interview = 22 credits. A 60-min interview = 30 credits. Voice add-on (ElevenLabs TTS) = +5 credits per session. AI evaluation/scoring = 4 credits. AI coaching = 2 credits. Credits reset monthly.' },
     { q: 'How does seat management work?', a: 'Each recruiter seat gives one team member full access — posting jobs, running AI interviews, scoring candidates, and viewing analytics. Add or remove seats anytime from your admin dashboard.' },
-    { q: 'What are session credits and how are they different from AI interactions?', a: 'Session credits = one complete AI interview session (candidate-facing). AI interactions = any AI call (evaluation, coaching, content generation). Session credits are a subset of AI interactions. Both are included in your monthly allowance.' },
-    { q: 'What happens when I exceed my included allowance?', a: 'You are billed at the overage rate for your plan. Starter: ₹15/extra AI interaction, ₹2/extra voice min. Professional: ₹12/extra AI interaction, ₹1.5/extra voice min. Business: ₹10/extra AI interaction, ₹1/extra voice min. Overage is billed at end of billing cycle.' },
-    { q: 'How is ElevenLabs voice usage calculated?', a: 'ElevenLabs TTS costs ~$0.10/1,000 characters (~₹8/1,000 chars). STT costs ~$0.22/hour (~₹18/hr). Your included voice minutes cover typical usage. Heavy voice/telecalling usage may incur overages.' },
+    { q: 'What happens when I exceed my included credits?', a: 'You are billed at the overage rate for your plan. Starter: ₹5/credit. Professional: ₹4/credit. Business: ₹3/credit. Alternatively, buy bulk credit packs at a discounted rate before you run out.' },
+    { q: 'How is ElevenLabs voice usage calculated?', a: 'ElevenLabs TTS costs ~$0.10/1,000 characters (~₹8/1,000 chars). STT costs ~$0.22/hour (~₹18/hr). Your included voice minutes cover typical usage. Each voice session also consumes +5 credits from your session credit pool.' },
     { q: 'What does Razorpay cost?', a: 'Razorpay has no fixed monthly subscription. Standard rate is 2% + GST per successful transaction. This is a variable payment-processing cost, not included in plan pricing.' },
     { q: 'Can I mix Razorpay and Stripe for payments?', a: 'Yes. Indian companies can pay via Razorpay (INR). International companies can pay via Stripe (USD/EUR/GBP). Both gateways are fully supported.' },
     { q: 'Is there a free trial for B2B plans?', a: 'Yes — Recruiter Starter and Professional plans come with a 14-day free trial, no credit card required. Business/Enterprise plans include a custom POC period.' },
+    { q: 'Can I buy extra credits without upgrading my plan?', a: 'Yes. Bulk credit packs are available at discounted rates. The more you buy, the lower the per-credit cost. Credits from packs never expire within your subscription period.' },
   ];
 
   const handleContactSubmit = async (e: React.FormEvent) => {
@@ -229,19 +245,62 @@ export default function B2BPricingContent() {
         <div className="relative max-w-7xl mx-auto px-6 py-16 text-center">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 rounded-full px-4 py-1.5 mb-6">
             <Building2 size={14} className="text-violet-400" />
-            <span className="text-violet-300 text-sm font-medium">B2B Recruiter Plans — Usage-Based Pricing</span>
+            <span className="text-violet-300 text-sm font-medium">B2B Recruiter Plans — Credit-Based Pricing</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Hire smarter with<br />
             <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">AI-powered interviews</span>
           </h1>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-4">
-            Structured plans for recruiting teams of all sizes. Each plan includes a fixed monthly allowance of AI interactions, voice minutes, emails, and storage. Pay overage only when you exceed your allowance.
+            Each plan includes a fixed monthly credit allowance. Credits are consumed strictly per action — 10 credits for a 20-min interview, 15 for 30-min, 22 for 45-min, 30 for 60-min. No hidden charges.
           </p>
-          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 mb-8">
+          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 mb-4">
             <AlertCircle size={13} className="text-amber-400" />
             <span className="text-amber-300 text-xs">Pricing reflects real infrastructure costs: OpenAI, Groq, ElevenLabs, Supabase, Railway, Brevo, Airtable, Calendly. Razorpay: 2% + GST per transaction (variable, not in plan price).</span>
           </div>
+
+          {/* Credit Rules Toggle */}
+          <button
+            onClick={() => setShowCreditRules(!showCreditRules)}
+            className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-2 mb-6 hover:bg-indigo-500/20 transition-colors"
+          >
+            <Coins size={13} className="text-indigo-400" />
+            <span className="text-indigo-300 text-xs font-medium">View credit consumption rules</span>
+            <ChevronDown size={12} className={`text-indigo-400 transition-transform ${showCreditRules ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showCreditRules && (
+            <div className="max-w-2xl mx-auto mb-6 bg-slate-800/60 border border-slate-700 rounded-2xl overflow-hidden text-left">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <Coins size={15} className="text-indigo-400" />
+                  <span className="text-sm font-700 text-white">Credit Consumption Rules</span>
+                </div>
+                <button onClick={() => setShowCreditRules(false)} className="text-slate-400 hover:text-white">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="divide-y divide-slate-700/50">
+                {CREDIT_RULES.map((rule, i) => (
+                  <div key={i} className="flex items-center justify-between px-5 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{rule.icon}</span>
+                      <div>
+                        <span className="text-sm text-slate-200">{rule.action}</span>
+                        {rule.note && <span className="text-xs text-slate-500 ml-1">({rule.note})</span>}
+                      </div>
+                    </div>
+                    <span className="text-sm font-700 text-indigo-400 whitespace-nowrap ml-4">{rule.credits} credits</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-5 py-3 bg-amber-500/10 border-t border-amber-500/20">
+                <p className="text-xs text-amber-300">
+                  <strong>Example:</strong> A 30-min voice interview = 15 credits (session) + 5 credits (voice add-on) = <strong>20 credits total</strong>
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Billing Toggle */}
           <div className="inline-flex items-center bg-slate-800/60 border border-slate-700 rounded-xl p-1 gap-1">
@@ -256,310 +315,272 @@ export default function B2BPricingContent() {
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${billing === 'annual' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
             >
               Annual
-              <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-500/30">Save 20%</span>
+              <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">Save 20%</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Plan Cards */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {b2bPlans.map((plan) => {
-            const monthlyTotal = getMonthlyTotal(plan);
+            const price = getPrice(plan);
             const seatCount = getSeatCount(plan.id);
+            const monthlyTotal = getMonthlyTotal(plan);
 
             return (
               <div
                 key={plan.id}
-                className={`relative rounded-2xl border ${plan.borderColor} bg-gradient-to-b ${plan.gradient} bg-slate-900/80 overflow-hidden flex flex-col ${plan.popular ? 'ring-2 ring-violet-500/50 scale-[1.02]' : ''}`}
+                className={`relative rounded-2xl border bg-gradient-to-b ${plan.gradient} ${plan.borderColor} p-6 flex flex-col gap-5 ${plan.popular ? 'ring-2 ring-violet-500/50 ring-offset-2 ring-offset-[#0a0f1e]' : ''}`}
               >
                 {plan.popular && (
-                  <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-semibold text-center py-1.5 tracking-wide">
-                    MOST POPULAR
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">Most Popular</span>
                   </div>
                 )}
 
-                <div className={`p-7 ${plan.popular ? 'pt-10' : ''}`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl bg-slate-800 border ${plan.borderColor} flex items-center justify-center`}>
-                      {plan.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold text-lg">{plan.name}</h3>
-                      <p className="text-slate-500 text-xs">{plan.tagline}</p>
-                    </div>
+                {/* Header */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {plan.icon}
+                    <span className="font-bold text-white text-lg">{plan.name}</span>
                   </div>
-
-                  {/* Infra reserve badge */}
-                  <div className="inline-flex items-center gap-1.5 bg-slate-800/60 border border-slate-700/50 rounded-lg px-2.5 py-1 mb-4">
-                    <TrendingUp size={11} className="text-slate-400" />
-                    <span className="text-slate-400 text-[10px]">{plan.infraReserve}</span>
+                  <p className="text-slate-400 text-xs">{plan.tagline}</p>
+                  <div className="mt-2 inline-flex items-center gap-1 bg-slate-800/60 border border-slate-700/50 rounded-lg px-2 py-1">
+                    <Info size={10} className="text-slate-500" />
+                    <span className="text-[10px] text-slate-500">{plan.infraReserve}</span>
                   </div>
+                </div>
 
-                  {/* Pricing */}
-                  <div className="mb-4">
-                    <div className="flex items-baseline gap-1 mb-1">
-                      <span className="text-3xl font-bold text-white">{formatPrice(getPrice(plan))}</span>
-                      <span className="text-slate-500 text-sm">/ seat / {billing === 'annual' ? 'mo (billed annually)' : 'month'}</span>
-                    </div>
-                    {billing === 'annual' && (
-                      <div className="text-slate-500 text-xs line-through">{formatPrice(plan.monthlyPerSeat)} / seat / month</div>
-                    )}
+                {/* Price */}
+                <div>
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-bold text-white">{formatPrice(price)}</span>
+                    <span className="text-slate-400 text-sm mb-1">/{plan.seatLabel}/mo</span>
                   </div>
-
-                  {/* Seat Management */}
-                  <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Users size={14} className="text-slate-400" />
-                        <span className="text-slate-300 text-sm font-medium">Recruiter Seats</span>
-                      </div>
-                      <span className="text-xs text-slate-500">{plan.minSeats}–{plan.maxSeats ?? '∞'} seats</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => updateSeats(plan.id, -1)}
-                        disabled={seatCount <= plan.minSeats}
-                        className="w-8 h-8 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-300 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <div className="flex-1 text-center">
-                        <span className="text-white font-bold text-xl">{seatCount}</span>
-                        <span className="text-slate-500 text-xs ml-1">seats</span>
-                      </div>
-                      <button
-                        onClick={() => updateSeats(plan.id, 1)}
-                        disabled={plan.maxSeats !== null && seatCount >= plan.maxSeats}
-                        className="w-8 h-8 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-300 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center justify-between">
-                      <span className="text-slate-500 text-xs">Monthly total</span>
-                      <span className="text-white font-semibold text-sm">{formatPrice(monthlyTotal)}</span>
-                    </div>
-                  </div>
-
-                  {/* Included Allowance Summary */}
-                  <div className="bg-slate-800/40 rounded-xl p-3 mb-4 border border-slate-700/40 space-y-1.5">
-                    <p className="text-[10px] font-700 text-slate-400 uppercase tracking-wider mb-2">Included Monthly Allowance</p>
-                    {[
-                      { icon: <Sparkles size={11} className="text-violet-400" />, label: `${typeof plan.aiInteractions === 'number' ? plan.aiInteractions.toLocaleString() : plan.aiInteractions} AI interactions` },
-                      { icon: <Zap size={11} className={plan.color} />, label: `${typeof plan.sessionCreditsIncluded === 'number' ? plan.sessionCreditsIncluded.toLocaleString() : plan.sessionCreditsIncluded} session credits` },
-                      { icon: <Mic size={11} className="text-blue-400" />, label: `${typeof plan.voiceMinutes === 'number' ? plan.voiceMinutes.toLocaleString() : plan.voiceMinutes} voice minutes (ElevenLabs)` },
-                      { icon: <FileText size={11} className="text-amber-400" />, label: `${typeof plan.emailsPerMonth === 'number' ? plan.emailsPerMonth.toLocaleString() : plan.emailsPerMonth} emails/mo (Brevo)` },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        {item.icon}
-                        <span className="text-slate-300 text-xs">{item.label}</span>
-                      </div>
-                    ))}
-                    <div className="pt-1.5 border-t border-slate-700/40 mt-1">
-                      <span className="text-slate-500 text-[10px]">Overage: {plan.overageAI} · {plan.overageVoice}</span>
-                    </div>
-                  </div>
-
-                  {/* SLA */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                      <Shield size={11} className="text-emerald-400" />
-                      <span>{plan.sla}</span>
-                    </div>
-                    <div className="w-px h-3 bg-slate-700" />
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                      <Headphones size={11} className="text-sky-400" />
-                      <span>{plan.supportSla}</span>
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  {plan.id === 'recruiter-business' ? (
-                    <a
-                      href="#contact"
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90"
-                    >
-                      Contact Sales <ArrowRight size={15} />
-                    </a>
-                  ) : (
-                    <button
-                      className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90' : 'bg-slate-700 border border-slate-600 text-white hover:bg-slate-600'}`}
-                    >
-                      Start 14-day Free Trial <ArrowRight size={15} />
-                    </button>
+                  {billing === 'annual' && (
+                    <p className="text-xs text-emerald-400 font-medium mt-0.5">Billed annually (20% off)</p>
                   )}
                 </div>
 
-                {/* Features */}
-                <div className="px-7 pb-7 flex-1">
-                  <div className="border-t border-slate-700/50 pt-5">
-                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">What's included</p>
-                    <ul className="space-y-2.5">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2.5">
-                          <Check size={14} className={`${plan.color} mt-0.5 flex-shrink-0`} />
-                          <span className="text-slate-300 text-sm leading-snug">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {/* Credit Badge */}
+                <div className="bg-slate-800/60 border border-indigo-500/30 rounded-xl px-4 py-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Coins size={14} className="text-indigo-400" />
+                      <span className="text-sm font-700 text-white">{plan.sessionCredits.toLocaleString('en-IN')} credits/month</span>
+                    </div>
+                    <span className="text-xs font-600 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      {plan.id === 'recruiter-starter' ? '50 sessions' : plan.id === 'recruiter-professional' ? '200 sessions' : '1,000 sessions'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-400">
+                    <span>20-min: 10 credits</span>
+                    <span>30-min: 15 credits</span>
+                    <span>45-min: 22 credits</span>
+                    <span>Voice add-on: +5 credits</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5">Overage: <span className="text-indigo-400 font-600">{plan.overageCreditRate}</span></p>
+                </div>
+
+                {/* Seat Selector */}
+                <div className="bg-slate-800/40 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-400">Recruiter seats</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateSeats(plan.id, -1)}
+                        className="w-6 h-6 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-colors"
+                      >
+                        <Minus size={12} className="text-slate-300" />
+                      </button>
+                      <span className="text-white font-bold text-sm w-6 text-center">{seatCount}</span>
+                      <button
+                        onClick={() => updateSeats(plan.id, 1)}
+                        className="w-6 h-6 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-colors"
+                      >
+                        <Plus size={12} className="text-slate-300" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">Monthly total</span>
+                    <span className="text-sm font-bold text-white">{formatPrice(monthlyTotal)}/mo</span>
                   </div>
                 </div>
+
+                {/* Features */}
+                <ul className="flex flex-col gap-2 flex-1">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check size={13} className="text-emerald-400 mt-0.5 shrink-0" />
+                      <span className="text-xs text-slate-300 leading-relaxed">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* SLA badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1 text-slate-400">
+                    <Shield size={9} /> {plan.sla}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1 text-slate-400">
+                    <Headphones size={9} /> {plan.supportSla}
+                  </span>
+                </div>
+
+                {/* CTA */}
+                <Link
+                  href="/recruiter-signup"
+                  className={`w-full text-center py-2.5 rounded-xl text-sm font-bold transition-all ${plan.popular ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                >
+                  {plan.id === 'recruiter-business' ? 'Contact Sales' : 'Start Free Trial'}
+                </Link>
               </div>
             );
           })}
         </div>
+
+        {/* Enterprise */}
+        <div className="mt-6 rounded-2xl border border-slate-700 bg-gradient-to-r from-slate-800/60 to-slate-900/60 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center">
+              <Globe size={22} className="text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg">Enterprise</h3>
+              <p className="text-slate-400 text-sm">Custom credits, seats, SLA, white-label, on-premise. ~$1,000+/mo infra reserve.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden md:block">
+              <p className="text-white font-bold">Custom pricing</p>
+              <p className="text-slate-400 text-xs">Starting from ₹1,00,000/mo</p>
+            </div>
+            <Link
+              href="#contact"
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-colors whitespace-nowrap"
+            >
+              Contact Sales
+            </Link>
+          </div>
+        </div>
       </div>
 
-      {/* Enterprise Custom Tier */}
+      {/* Credit Breakdown Table */}
       <div className="max-w-7xl mx-auto px-6 pb-12">
-        <div className="bg-gradient-to-r from-amber-900/20 to-orange-900/20 border border-amber-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Crown size={18} className="text-amber-400" />
-              <h3 className="text-white font-bold text-lg">Enterprise — Custom Pricing</h3>
-              <span className="text-[10px] font-700 bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">~$1,000+/mo infra reserve</span>
+        <div className="bg-slate-800/40 border border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-700 bg-slate-800/60">
+            <div className="flex items-center gap-2">
+              <Coins size={18} className="text-indigo-400" />
+              <h2 className="text-base font-bold text-white">Credit consumption — B2B plan breakdown</h2>
             </div>
-            <p className="text-slate-400 text-sm max-w-xl">For heavy AI interviews, telecalling, voice automation, analytics, and multi-tenant deployments. Includes dedicated infrastructure, custom AI token allowances, unlimited voice minutes, 100,000+ emails/mo, custom SLA, and white-label options.</p>
-            <div className="flex flex-wrap gap-3 mt-3">
-              {['Unlimited AI interactions', 'Unlimited voice minutes', '100,000+ emails/mo', 'Custom AI model fine-tuning', 'Dedicated infra', 'Custom SLA 99.99%'].map(f => (
-                <span key={f} className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">{f}</span>
-              ))}
-            </div>
+            <p className="text-xs text-slate-400 mt-1">Exact sessions you can run per plan per month at standard credit rates.</p>
           </div>
-          <a href="#contact" className="shrink-0 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl hover:opacity-90 transition-all">
-            Get Custom Quote <ArrowRight size={15} />
-          </a>
-        </div>
-      </div>
-
-      {/* Bulk Session Credits */}
-      <div className="max-w-7xl mx-auto px-6 pb-16">
-        <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Zap size={20} className="text-sky-400" />
-            <h2 className="text-xl font-bold text-white">Bulk Session Credit Packs</h2>
-          </div>
-          <p className="text-slate-400 text-sm mb-2">Top up your team's session credits at any time. Bigger packs = lower per-credit cost. Credits valid for 6 months.</p>
-          <p className="text-slate-500 text-xs mb-8">1 session credit = 1 complete AI interview session (candidate-facing). Separate from AI interaction overage billing.</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {bulkCreditPacks.map((pack) => (
-              <div
-                key={pack.id}
-                className={`relative rounded-xl border p-5 text-center transition-all cursor-pointer hover:border-sky-500/50 ${pack.popular ? 'border-sky-500/50 bg-sky-500/5 ring-1 ring-sky-500/30' : 'border-slate-700/50 bg-slate-800/40 hover:bg-slate-800/60'}`}
-              >
-                {pack.popular && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-xs font-semibold px-3 py-0.5 rounded-full">
-                    Best Value
-                  </div>
-                )}
-                <div className="text-2xl font-bold text-white mb-1">{pack.label}</div>
-                {pack.bonus > 0 && (
-                  <div className="text-sky-400 text-xs font-medium mb-2">+{pack.bonus} bonus credits</div>
-                )}
-                <div className="text-slate-300 font-semibold text-lg mb-1">{formatPrice(pack.price)}</div>
-                <div className="text-slate-500 text-xs mb-4">{pack.perCredit}</div>
-                <button className="w-full py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-600 transition-colors">
-                  Add to Plan
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Plan Comparison Table */}
-      <div className="max-w-7xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-bold text-white text-center mb-8">Full Plan Comparison</h2>
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/50">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-700/50 bg-slate-800/60">
-                <th className="text-left px-6 py-4 text-slate-400 font-medium w-1/4">Feature</th>
-                {b2bPlans.map(p => (
-                  <th key={p.id} className={`px-6 py-4 text-center font-semibold ${p.color}`}>{p.name}</th>
-                ))}
-                <th className="px-6 py-4 text-center font-semibold text-amber-400">Enterprise</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ['Infrastructure Reserve', '~$175/mo', '~$350–400/mo', '~$600/mo', '~$1,000+/mo'],
-                ['Recruiter Seats', '1–5', '5–25', '25+', 'Unlimited'],
-                ['AI Interactions / Month', '100', '500', '2,000+', 'Unlimited'],
-                ['Session Credits / Month', '50', '500', '2,000', 'Unlimited'],
-                ['Voice Minutes / Month (ElevenLabs)', '30 min', '300 min', '1,000+ min', 'Unlimited'],
-                ['Emails / Month (Brevo)', '500', '5,000', '25,000+', '100,000+'],
-                ['Storage', '10 GB', '50 GB', '200 GB', 'Custom'],
-                ['Overage — AI Interaction', '₹15/extra', '₹12/extra', '₹10/extra', 'Custom'],
-                ['Overage — Voice Minute', '₹2/extra', '₹1.5/extra', '₹1/extra', 'Custom'],
-                ['Candidate Analytics', 'Basic', 'Advanced', 'Custom', 'Custom + BI'],
-                ['ATS Integration', 'CSV Export', 'Full API', 'Custom + On-prem', 'Custom + On-prem'],
-                ['Interview Recording', '✗', '✓', '✓', '✓'],
-                ['Custom Competency Frameworks', '✗', '✓', '✓', '✓'],
-                ['SSO / SAML', '✗', '✗', '✓', '✓'],
-                ['Dedicated Success Manager', '✗', '✗', '✓', '✓'],
-                ['SLA Uptime', '99.5%', '99.7%', '99.9%', '99.99%'],
-                ['Support SLA', '48h email', '12h priority', '1h phone', 'Dedicated'],
-              ].map((row, i) => {
-                const [feature, ...rowVals] = row;
-                return (
-                  <tr key={i} className={`border-b border-slate-800/60 ${i % 2 === 0 ? 'bg-slate-900/20' : ''}`}>
-                    <td className="px-6 py-3.5 text-slate-300 font-medium">{feature}</td>
-                    {rowVals.map((val, j) => (
-                      <td key={j} className="px-6 py-3.5 text-center text-slate-400">
-                        {val === '✓' ? <Check size={16} className="text-emerald-400 mx-auto" /> :
-                         val === '✗' ? <span className="text-slate-600">—</span> :
-                         <span className="text-slate-300 text-xs">{val}</span>}
-                      </td>
-                    ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left px-5 py-3 text-xs font-700 text-slate-400">Action</th>
+                  <th className="text-center px-3 py-3 text-xs font-700 text-slate-400">Credits</th>
+                  <th className="text-center px-3 py-3 text-xs font-700 text-sky-400">Starter (500)</th>
+                  <th className="text-center px-3 py-3 text-xs font-700 text-violet-400">Professional (2,000)</th>
+                  <th className="text-center px-3 py-3 text-xs font-700 text-amber-400">Business (10,000)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {[
+                  { action: '20-min AI interview', credits: 10, starter: 50, pro: 200, biz: 1000 },
+                  { action: '30-min AI interview', credits: 15, starter: 33, pro: 133, biz: 666 },
+                  { action: '45-min AI interview', credits: 22, starter: 22, pro: 90, biz: 454 },
+                  { action: '60-min AI interview', credits: 30, starter: 16, pro: 66, biz: 333 },
+                  { action: 'Voice add-on (TTS)', credits: 5, starter: 'per session', pro: 'per session', biz: 'per session' },
+                  { action: 'AI evaluation/scoring', credits: 4, starter: 125, pro: 500, biz: 2500 },
+                  { action: 'LSRW session', credits: 8, starter: 62, pro: 250, biz: 1250 },
+                  { action: 'Coding assessment', credits: 5, starter: 100, pro: 400, biz: 2000 },
+                  { action: 'Resume ATS check', credits: 3, starter: 166, pro: 666, biz: 3333 },
+                  { action: 'AI coaching / Q&A', credits: 2, starter: 250, pro: 1000, biz: 5000 },
+                ].map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-700/20">
+                    <td className="px-5 py-2.5 text-xs text-slate-300">{row.action}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className="text-xs font-700 text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">{row.credits}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center text-xs text-sky-400 font-600">{row.starter}</td>
+                    <td className="px-3 py-2.5 text-center text-xs text-violet-400 font-600">{row.pro}</td>
+                    <td className="px-3 py-2.5 text-center text-xs text-amber-400 font-600">{row.biz}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-slate-700 bg-slate-800/60">
+                  <td className="px-5 py-3 text-xs font-700 text-white">Total credits/month</td>
+                  <td className="px-3 py-3 text-center text-xs text-slate-400">—</td>
+                  <td className="px-3 py-3 text-center text-xs font-700 text-sky-400">500</td>
+                  <td className="px-3 py-3 text-center text-xs font-700 text-violet-400">2,000</td>
+                  <td className="px-3 py-3 text-center text-xs font-700 text-amber-400">10,000</td>
+                </tr>
+                <tr className="bg-slate-800/60">
+                  <td className="px-5 py-3 text-xs font-700 text-white">Overage rate</td>
+                  <td className="px-3 py-3 text-center text-xs text-slate-400">—</td>
+                  <td className="px-3 py-3 text-center text-xs text-sky-400 font-600">₹5/credit</td>
+                  <td className="px-3 py-3 text-center text-xs text-violet-400 font-600">₹4/credit</td>
+                  <td className="px-3 py-3 text-center text-xs text-amber-400 font-600">₹3/credit</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Trust Badges */}
-      <div className="max-w-7xl mx-auto px-6 pb-16">
+      {/* Bulk Credit Packs */}
+      <div className="max-w-7xl mx-auto px-6 pb-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-white mb-2">Bulk Credit Packs</h2>
+          <p className="text-slate-400 text-sm">Buy extra credits at a discount. Credits never expire within your subscription period.</p>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: <Shield size={20} className="text-emerald-400" />, title: 'SOC 2 Type II', desc: 'Enterprise security (Business+)' },
-            { icon: <Globe size={20} className="text-sky-400" />, title: 'Global Payments', desc: 'Stripe + Razorpay (2% + GST)' },
-            { icon: <Clock size={20} className="text-violet-400" />, title: '14-Day Trial', desc: 'No credit card needed' },
-            { icon: <Headphones size={20} className="text-amber-400" />, title: 'Dedicated Support', desc: 'Real humans, fast SLA' },
-          ].map((item, i) => (
-            <div key={i} className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
-                {item.icon}
-              </div>
-              <div>
-                <div className="text-white font-semibold text-sm">{item.title}</div>
-                <div className="text-slate-500 text-xs">{item.desc}</div>
-              </div>
+          {bulkCreditPacks.map((pack) => (
+            <div
+              key={pack.id}
+              className={`relative rounded-xl border p-5 text-center ${pack.popular ? 'border-violet-500/50 bg-violet-500/10' : 'border-slate-700 bg-slate-800/40'}`}
+            >
+              {pack.popular && (
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                  <span className="bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Best Value</span>
+                </div>
+              )}
+              <div className="text-2xl font-bold text-white mb-1">{pack.label}</div>
+              {pack.bonus > 0 && (
+                <div className="text-xs text-emerald-400 font-medium mb-2">+{pack.bonus} bonus credits</div>
+              )}
+              <div className="text-lg font-bold text-white mb-1">₹{pack.price.toLocaleString('en-IN')}</div>
+              <div className="text-xs text-slate-400">{pack.perCredit}</div>
+              <button className={`mt-3 w-full py-2 rounded-lg text-xs font-bold transition-colors ${pack.popular ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}>
+                Buy Pack
+              </button>
             </div>
           ))}
         </div>
       </div>
 
       {/* FAQ */}
-      <div className="max-w-3xl mx-auto px-6 pb-16">
+      <div className="max-w-3xl mx-auto px-6 pb-12">
         <h2 className="text-2xl font-bold text-white text-center mb-8">Frequently Asked Questions</h2>
         <div className="space-y-3">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-slate-900/60 border border-slate-700/50 rounded-xl overflow-hidden">
+            <div key={i} className="border border-slate-700 rounded-xl overflow-hidden">
               <button
                 onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                className="w-full flex items-center justify-between px-6 py-4 text-left"
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-800/40 transition-colors"
               >
-                <span className="text-slate-200 font-medium text-sm">{faq.q}</span>
-                {expandedFaq === i ? <ChevronUp size={16} className="text-slate-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
+                <span className="text-sm font-medium text-white">{faq.q}</span>
+                {expandedFaq === i ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
               </button>
               {expandedFaq === i && (
-                <div className="px-6 pb-4 text-slate-400 text-sm leading-relaxed border-t border-slate-800">
-                  <div className="pt-3">{faq.a}</div>
+                <div className="px-5 pb-4 text-sm text-slate-400 leading-relaxed border-t border-slate-700/50 pt-3">
+                  {faq.a}
                 </div>
               )}
             </div>
@@ -567,64 +588,70 @@ export default function B2BPricingContent() {
         </div>
       </div>
 
-      {/* Enterprise Contact Form */}
-      <div id="contact" className="max-w-3xl mx-auto px-6 pb-20">
-        <div className="bg-gradient-to-b from-slate-900/80 to-slate-900/40 border border-amber-500/30 rounded-2xl p-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Crown size={20} className="text-amber-400" />
-            <h2 className="text-xl font-bold text-white">Contact Enterprise Sales</h2>
-          </div>
-          <p className="text-slate-400 text-sm mb-6">Tell us about your team and we'll put together a custom quote within 24 hours. Include your expected AI interactions, voice minutes, and email volume for accurate pricing.</p>
-
+      {/* Contact Form */}
+      <div id="contact" className="max-w-2xl mx-auto px-6 pb-16">
+        <div className="bg-slate-800/40 border border-slate-700 rounded-2xl p-8">
+          <h2 className="text-xl font-bold text-white mb-2 text-center">Talk to Sales</h2>
+          <p className="text-slate-400 text-sm text-center mb-6">For Enterprise plans, custom credits, or volume discounts.</p>
           {formSubmitted ? (
             <div className="text-center py-8">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Check size={24} className="text-emerald-400" />
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">Request received!</h3>
-              <p className="text-slate-400 text-sm">Our enterprise team will reach out within 24 hours.</p>
+              <p className="text-white font-medium">Thanks! We'll be in touch within 24 hours.</p>
             </div>
           ) : (
             <form onSubmit={handleContactSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 text-xs font-medium mb-1.5">Full Name</label>
-                  <input type="text" required value={contactForm.name} onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))} placeholder="Jane Smith" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-slate-400 text-xs font-medium mb-1.5">Company</label>
-                  <input type="text" required value={contactForm.company} onChange={e => setContactForm(p => ({ ...p, company: e.target.value }))} placeholder="Acme Corp" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors" />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={contactForm.name}
+                  onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))}
+                  className="bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Company"
+                  value={contactForm.company}
+                  onChange={e => setContactForm(p => ({ ...p, company: e.target.value }))}
+                  className="bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                  required
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 text-xs font-medium mb-1.5">Work Email</label>
-                  <input type="email" required value={contactForm.email} onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))} placeholder="jane@acme.com" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-slate-400 text-xs font-medium mb-1.5">Estimated Seats</label>
-                  <input type="number" min="25" value={contactForm.seats} onChange={e => setContactForm(p => ({ ...p, seats: e.target.value }))} placeholder="e.g. 50" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-medium mb-1.5">Tell us about your needs (AI usage, voice minutes, email volume)</label>
-                <textarea rows={3} value={contactForm.message} onChange={e => setContactForm(p => ({ ...p, message: e.target.value }))} placeholder="Team size, use case, expected AI interactions/month, voice minutes/month, integrations needed..." className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors resize-none" />
-              </div>
-              <button type="submit" disabled={submitting} className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-all">
-                {submitting ? 'Sending...' : <>{`Request Enterprise Quote`} <ArrowRight size={15} /></>}
+              <input
+                type="email"
+                placeholder="Work email"
+                value={contactForm.email}
+                onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))}
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                required
+              />
+              <input
+                type="number"
+                placeholder="Estimated seats needed"
+                value={contactForm.seats}
+                onChange={e => setContactForm(p => ({ ...p, seats: e.target.value }))}
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+              />
+              <textarea
+                placeholder="Tell us about your hiring needs..."
+                value={contactForm.message}
+                onChange={e => setContactForm(p => ({ ...p, message: e.target.value }))}
+                rows={3}
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 resize-none"
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-colors"
+              >
+                {submitting ? 'Sending...' : 'Send Message'}
               </button>
             </form>
           )}
         </div>
-      </div>
-
-      <div className="text-center pb-12">
-        <p className="text-slate-500 text-sm">
-          Looking for individual candidate plans?{' '}
-          <Link href="/pricing" className="text-sky-400 hover:text-sky-300 font-medium transition-colors">
-            View B2C Pricing →
-          </Link>
-        </p>
       </div>
     </div>
   );
