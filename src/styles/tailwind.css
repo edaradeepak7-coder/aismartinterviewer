@@ -54,6 +54,30 @@
   100% { width: 100%; }
 }
 
+/* Netflix-style page loader spinner */
+@keyframes netflix-spin-outer {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes netflix-spin-inner {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes netflix-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.8); }
+}
+
+.netflix-loader-outer {
+  animation: netflix-spin-outer 0.8s linear infinite;
+}
+.netflix-loader-inner {
+  animation: netflix-spin-inner 1.2s linear infinite;
+}
+.netflix-loader-dot {
+  animation: netflix-pulse-dot 1s ease-in-out infinite;
+}
+
 .fade-in        { animation: fadeIn 0.35s ease both; }
 .fade-in-up     { animation: fadeInUp 0.4s ease both; }
 .fade-in-left   { animation: fadeInLeft 0.35s ease both; }

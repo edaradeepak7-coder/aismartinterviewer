@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/client';
 
 export type EmailType =
-  | 'course_enrollment' |'assessment_completion' |'interview_scheduled' |'interview_reminder_24h' |'score_notification' |'seat_purchase_confirmation' |'auto_renewal_reminder' |'achievement_unlock' |'leaderboard_milestone';
+  | 'course_enrollment' |'assessment_completion' |'interview_scheduled' |'interview_reminder_24h' |'score_notification' |'seat_purchase_confirmation' |'auto_renewal_reminder' |'achievement_unlock' |'leaderboard_milestone' |'subscription_activated' |'subscription_renewed' |'subscription_cancelled' |'overage_threshold_80' |'overage_threshold_90' |'payment_failed_retry' |'payment_retry_success';
 
 interface EmailPayload {
   type: EmailType;
   to: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }
 
 /**
@@ -27,9 +27,9 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
   }
 }
 
-// ─── Convenience helpers ──────────────────────────────────────────────────────
+// ─── Existing helpers ─────────────────────────────────────────────────────────
 
-export function sendCourseEnrollmentEmail(to: string, userName: string, courseName: string, extras?: Record<string, any>) {
+export function sendCourseEnrollmentEmail(to: string, userName: string, courseName: string, extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'course_enrollment',
     to,
@@ -37,7 +37,7 @@ export function sendCourseEnrollmentEmail(to: string, userName: string, courseNa
   });
 }
 
-export function sendAssessmentCompletionEmail(to: string, userName: string, assessmentName: string, score: number, passed: boolean, extras?: Record<string, any>) {
+export function sendAssessmentCompletionEmail(to: string, userName: string, assessmentName: string, score: number, passed: boolean, extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'assessment_completion',
     to,
@@ -45,7 +45,7 @@ export function sendAssessmentCompletionEmail(to: string, userName: string, asse
   });
 }
 
-export function sendInterviewScheduledEmail(to: string, userName: string, interviewType: string, scheduledDate: string, extras?: Record<string, any>) {
+export function sendInterviewScheduledEmail(to: string, userName: string, interviewType: string, scheduledDate: string, extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'interview_scheduled',
     to,
@@ -53,8 +53,7 @@ export function sendInterviewScheduledEmail(to: string, userName: string, interv
   });
 }
 
-/** Send 24-hour interview reminder */
-export function sendInterviewReminderEmail(to: string, userName: string, interviewType: string, scheduledDate: string, extras?: Record<string, any>) {
+export function sendInterviewReminderEmail(to: string, userName: string, interviewType: string, scheduledDate: string, extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'interview_reminder_24h',
     to,
@@ -62,8 +61,7 @@ export function sendInterviewReminderEmail(to: string, userName: string, intervi
   });
 }
 
-/** Send score notification after interview completion */
-export function sendScoreNotificationEmail(to: string, userName: string, score: number, interviewType?: string, extras?: Record<string, any>) {
+export function sendScoreNotificationEmail(to: string, userName: string, score: number, interviewType?: string, extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'score_notification',
     to,
@@ -71,8 +69,7 @@ export function sendScoreNotificationEmail(to: string, userName: string, score: 
   });
 }
 
-/** Send seat purchase confirmation to institution admin */
-export function sendSeatPurchaseConfirmationEmail(to: string, userName: string, seats: number, amount: number, paymentMethod: 'online' | 'offline', extras?: Record<string, any>) {
+export function sendSeatPurchaseConfirmationEmail(to: string, userName: string, seats: number, amount: number, paymentMethod: 'online' | 'offline', extras?: Record<string, unknown>) {
   return sendPlatformEmail({
     type: 'seat_purchase_confirmation',
     to,
@@ -80,12 +77,68 @@ export function sendSeatPurchaseConfirmationEmail(to: string, userName: string, 
   });
 }
 
-/** Send auto-renewal reminder to institution admin */
-export function sendAutoRenewalReminderEmail(to: string, userName: string, seats: number, renewalAmount: number, renewalDate: string, daysUntilRenewal: number, extras?: Record<string, any>) {
+// ─── New subscription lifecycle email helpers ─────────────────────────────────
+
+/** Sent when a subscription is successfully activated after payment */
+export function sendSubscriptionActivatedEmail(to: string, userName: string, planName: string, renewalDate: string, creditsTotal: number) {
   return sendPlatformEmail({
-    type: 'auto_renewal_reminder',
+    type: 'subscription_activated',
     to,
-    data: { userName, seats, renewalAmount, renewalDate, daysUntilRenewal, ...extras },
+    data: { userName, planName, renewalDate, creditsTotal },
+  });
+}
+
+/** Sent when a subscription auto-renews successfully */
+export function sendSubscriptionRenewedEmail(to: string, userName: string, planName: string, nextRenewalDate: string, creditsReset: number) {
+  return sendPlatformEmail({
+    type: 'subscription_renewed',
+    to,
+    data: { userName, planName, nextRenewalDate, creditsReset },
+  });
+}
+
+/** Sent when subscription is cancelled */
+export function sendSubscriptionCancelledEmail(to: string, userName: string, planName: string, dataRetainUntil: string) {
+  return sendPlatformEmail({
+    type: 'subscription_cancelled',
+    to,
+    data: { userName, planName, dataRetainUntil, message: 'Your data will be retained for 30 days.' },
+  });
+}
+
+/** Sent when credit usage reaches 80% of plan limit */
+export function sendOverageThreshold80Email(to: string, userName: string, creditsUsed: number, creditsTotal: number, planName: string) {
+  return sendPlatformEmail({
+    type: 'overage_threshold_80',
+    to,
+    data: { userName, creditsUsed, creditsTotal, planName, percentUsed: 80, remaining: creditsTotal - creditsUsed },
+  });
+}
+
+/** Sent when credit usage reaches 90% of plan limit */
+export function sendOverageThreshold90Email(to: string, userName: string, creditsUsed: number, creditsTotal: number, planName: string) {
+  return sendPlatformEmail({
+    type: 'overage_threshold_90',
+    to,
+    data: { userName, creditsUsed, creditsTotal, planName, percentUsed: 90, remaining: creditsTotal - creditsUsed },
+  });
+}
+
+/** Sent when a payment fails and retry is scheduled */
+export function sendPaymentFailedRetryEmail(to: string, userName: string, attempt: number, nextRetryDate: string, fallbackMethod?: string) {
+  return sendPlatformEmail({
+    type: 'payment_failed_retry',
+    to,
+    data: { userName, attempt, nextRetryDate, fallbackMethod: fallbackMethod || null, maxAttempts: 4 },
+  });
+}
+
+/** Sent when a payment retry succeeds */
+export function sendPaymentRetrySuccessEmail(to: string, userName: string, planName: string) {
+  return sendPlatformEmail({
+    type: 'payment_retry_success',
+    to,
+    data: { userName, planName },
   });
 }
 

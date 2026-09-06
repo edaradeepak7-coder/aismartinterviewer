@@ -28,6 +28,36 @@ export async function POST(request: NextRequest) {
 
     const result = data as any;
 
+    // Track peak hour and month metadata on the credit_usage record
+    const now = new Date();
+    await supabase
+      .from('credit_usage')
+      .update({
+        hour_of_day: now.getHours(),
+        day_of_week: now.getDay(),
+        month_year: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+      })
+      .eq('user_id', user.id)
+      .eq('feature', feature)
+      .is('hour_of_day', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    // If overage alert triggered, send email notification
+    if (result?.alert_80 || result?.alert_90) {
+      const threshold = result.alert_90 ? 90 : 80;
+      // Log alert to subscription_email_alerts for async processing
+      await supabase.from('subscription_email_alerts').insert({
+        user_id: user.id,
+        alert_type: threshold === 90 ? 'overage_threshold_90' : 'overage_threshold_80',
+        metadata: {
+          credits_used: result.credits_consumed,
+          credits_total: result.credits_remaining + result.credits_consumed,
+          percent_used: threshold,
+        },
+      }).select();
+    }
+
     // If overage alert triggered, log it
     if (result?.alert_80 || result?.alert_90) {
       const threshold = result.alert_90 ? 90 : 80;

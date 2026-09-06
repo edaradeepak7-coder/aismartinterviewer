@@ -116,11 +116,11 @@ export default function AIUsagePage() {
 
         // Endpoint breakdown
         const endpointData: EndpointStat[] = [
-          { name: 'chat-completion', calls: totalQuestions, tokens: `${(totalQuestions * 800 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.012).toFixed(2)}`, latency: '1.2s', status: 'healthy' },
-          { name: 'evaluate', calls: Math.floor(totalQuestions * 0.8), tokens: `${(totalQuestions * 600 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.009).toFixed(2)}`, latency: '2.1s', status: 'healthy' },
-          { name: 'score-response', calls: interviews.reduce((s, iv) => s + (iv.answered_count || 0), 0), tokens: `${(totalQuestions * 400 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.006).toFixed(2)}`, latency: '0.9s', status: 'healthy' },
-          { name: 'speech-to-text', calls: Math.floor(totalInterviews * 0.6), tokens: '—', cost: `$${(totalInterviews * 0.6 * 0.006).toFixed(2)}`, latency: '3.4s', status: totalInterviews > 10 ? 'warn' : 'healthy' },
-          { name: 'contextual-questions', calls: Math.floor(totalInterviews * 1.5), tokens: `${(totalInterviews * 200 / 1000).toFixed(0)}K`, cost: `$${(totalInterviews * 0.003).toFixed(2)}`, latency: '1.8s', status: 'healthy' },
+          { name: 'Chat Completion', calls: totalQuestions, tokens: `${(totalQuestions * 800 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.012).toFixed(2)}`, latency: '1.2s', status: 'healthy' },
+          { name: 'Evaluation Engine', calls: Math.floor(totalQuestions * 0.8), tokens: `${(totalQuestions * 600 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.009).toFixed(2)}`, latency: '2.1s', status: 'healthy' },
+          { name: 'Score Processor', calls: interviews.reduce((s: number, iv: any) => s + (iv.answered_count || 0), 0), tokens: `${(totalQuestions * 400 / 1000).toFixed(0)}K`, cost: `$${(totalQuestions * 0.006).toFixed(2)}`, latency: '0.9s', status: 'healthy' },
+          { name: 'Voice Transcription', calls: Math.floor(totalInterviews * 0.6), tokens: '—', cost: `$${(totalInterviews * 0.6 * 0.006).toFixed(2)}`, latency: '3.4s', status: totalInterviews > 10 ? 'warn' : 'healthy' },
+          { name: 'Question Generator', calls: Math.floor(totalInterviews * 1.5), tokens: `${(totalInterviews * 200 / 1000).toFixed(0)}K`, cost: `$${(totalInterviews * 0.003).toFixed(2)}`, latency: '1.8s', status: 'healthy' },
         ];
 
         if (!cancelled) {
@@ -246,7 +246,7 @@ export default function AIUsagePage() {
               {endpoints.map((ep, idx) => (
                 <tr key={ep.name} className="hover:bg-[#F8FAFC] transition-colors">
                   <td className="px-5 py-3 text-xs text-[#6B7A99] font-600">{idx + 1}</td>
-                  <td className="px-5 py-3 font-600 text-[#0D1B3E] font-mono text-xs">/api/ai/{ep.name}</td>
+                  <td className="px-5 py-3 font-600 text-[#0D1B3E] text-xs">{ep.name}</td>
                   <td className="px-5 py-3 text-[#6B7A99]">{ep.calls.toLocaleString()}</td>
                   <td className="px-5 py-3 text-[#6B7A99] hidden sm:table-cell">{ep.tokens}</td>
                   <td className="px-5 py-3 font-600 text-[#0D1B3E]">{ep.cost}</td>
