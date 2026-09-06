@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.background_jobs (
   completed_at TIMESTAMPTZ DEFAULT NULL,
   next_retry_at TIMESTAMPTZ DEFAULT NULL,
   created_by UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
-  tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE,
+  tenant_id UUID DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
