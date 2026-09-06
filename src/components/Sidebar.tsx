@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AppLogo from './ui/AppLogo';
-import { LayoutDashboard, Mail, Mic, Settings, Users, Briefcase, ClipboardList, Database, TrendingUp, Shield, Building2, FileCheck, SlidersHorizontal, LogOut, Gift, CalendarCheck, Bell, MessageSquarePlus, History, CalendarDays, FlaskConical, Target, GraduationCap, Lock, Activity, PenSquare, BarChart, KeyRound, CreditCard, ShieldAlert, FileSearch, Key, Globe, Code2, BookOpen, PenLine, BarChart2, Trophy, Map, X, FolderOpen, Award, Kanban, Star, Zap, GitBranch, CheckSquare, MailOpen, PieChart, Filter, HeartPulse, CalendarClock, MonitorDot, Layers, Rocket, Gauge, FileBarChart, AlertOctagon, Terminal, BellRing, Building, Calendar, Upload, ClipboardCheck, Inbox, FileDown, Wand2, TicketIcon } from 'lucide-react';
+import { LayoutDashboard, Mail, Mic, Settings, Users, Briefcase, ClipboardList, Database, TrendingUp, Shield, Building2, FileCheck, SlidersHorizontal, LogOut, Gift, CalendarCheck, Bell, MessageSquarePlus, History, CalendarDays, FlaskConical, Target, GraduationCap, Lock, Activity, PenSquare, BarChart, KeyRound, CreditCard, ShieldAlert, FileSearch, Key, Globe, Code2, BookOpen, PenLine, BarChart2, Trophy, Map, X, FolderOpen, Award, Kanban, Star, Zap, GitBranch, CheckSquare, MailOpen, PieChart, Filter, HeartPulse, CalendarClock, MonitorDot, Layers, Rocket, Gauge, FileBarChart, AlertOctagon, Terminal, BellRing, Building, Calendar, Upload, ClipboardCheck, Inbox, FileDown, Wand2, TicketIcon, PauseCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -83,6 +83,7 @@ const candidateNav: NavGroup[] = [
       { label: 'Notifications', href: '/notifications', icon: <Bell size={16} /> },
       { label: 'Support', href: '/support', icon: <TicketIcon size={16} />, accent: 'new' },
       { label: 'Credit Report', href: '/credit-report', icon: <BarChart2 size={16} />, accent: 'new' },
+      { label: 'Pause Subscription', href: '/subscription-pause', icon: <PauseCircle size={16} />, accent: 'new' },
       { label: 'Subscription', href: '/subscription', icon: <CreditCard size={16} /> },
       { label: 'Billing', href: '/billing', icon: <CreditCard size={16} />, accent: 'new' },
       { label: 'Pricing Plans', href: '/pricing', icon: <Zap size={16} />, accent: 'new' },
@@ -236,6 +237,7 @@ const adminNav: NavGroup[] = [
       { label: 'Team Subscriptions', href: '/team-subscription', icon: <Users size={16} />, accent: 'new' },
       { label: 'Payment Sync', href: '/admin-payment-sync', icon: <CreditCard size={16} />, accent: 'new' },
       { label: 'Subscription Audit Log', href: '/subscription-audit-log', icon: <FileSearch size={16} />, accent: 'new' },
+      { label: 'Credit Management', href: '/admin-credit-management', icon: <Zap size={16} />, accent: 'new' },
       { label: 'Subscription', href: '/subscription', icon: <CreditCard size={16} /> },
     ],
   },
