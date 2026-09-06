@@ -234,6 +234,8 @@ const adminNav: NavGroup[] = [
     items: [
       { label: 'Support Tickets', href: '/support', icon: <TicketIcon size={16} />, accent: 'new' },
       { label: 'Team Subscriptions', href: '/team-subscription', icon: <Users size={16} />, accent: 'new' },
+      { label: 'Payment Sync', href: '/admin-payment-sync', icon: <CreditCard size={16} />, accent: 'new' },
+      { label: 'Subscription Audit Log', href: '/subscription-audit-log', icon: <FileSearch size={16} />, accent: 'new' },
       { label: 'Subscription', href: '/subscription', icon: <CreditCard size={16} /> },
     ],
   },
